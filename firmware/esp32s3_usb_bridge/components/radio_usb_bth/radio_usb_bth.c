@@ -301,9 +301,10 @@ static bool class_xfer(uint8_t rhport, uint8_t ep_addr, xfer_result_t result,
     }
 
     if (ep_addr == s_state.acl_out_ep) {
-        if (result != XFER_RESULT_SUCCESS ||
-            !ingest_acl_out_chunk(s_buffers.acl_out_ep, xferred_bytes)) {
+        if (result != XFER_RESULT_SUCCESS) {
             radio_usb_bth_protocol_error_cb();
+        } else {
+            (void)ingest_acl_out_chunk(s_buffers.acl_out_ep, xferred_bytes);
         }
         return arm_acl_out(rhport);
     }
