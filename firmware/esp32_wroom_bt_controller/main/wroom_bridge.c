@@ -68,8 +68,7 @@ static radio_h4_parser_t s_uart_rx_parser;
 static radio_h4_packet_t s_uart_rx_packet;
 static radio_h4_packet_t s_vhci_rx_packet;
 
-static const char *state_name(wroom_state_t state)
-{
+static const char *state_name(wroom_state_t state) {
     switch (state) {
     case WROOM_STATE_RESET:
         return "RESET";
@@ -86,15 +85,13 @@ static const char *state_name(wroom_state_t state)
     }
 }
 
-static void set_state(wroom_state_t state)
-{
+static void set_state(wroom_state_t state) {
     const wroom_state_t previous = s_state;
     s_state = state;
     ESP_LOGI(TAG, "state %s -> %s", state_name(previous), state_name(state));
 }
 
-static void request_recovery(const char *reason)
-{
+static void request_recovery(const char *reason) {
     if (s_state != WROOM_STATE_RECOVERING) {
         s_diag.recovery_requests++;
         ESP_LOGE(TAG, "fatal bridge condition: %s", reason);
@@ -105,16 +102,14 @@ static void request_recovery(const char *reason)
     }
 }
 
-static void update_high_water(QueueHandle_t queue, UBaseType_t *high_water)
-{
+static void update_high_water(QueueHandle_t queue, UBaseType_t *high_water) {
     const UBaseType_t depth = uxQueueMessagesWaiting(queue);
     if (depth > *high_water) {
         *high_water = depth;
     }
 }
 
-static esp_err_t init_nvs(void)
-{
+static esp_err_t init_nvs(void) {
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_RETURN_ON_ERROR(nvs_flash_erase(), TAG, "erase NVS");
@@ -123,8 +118,7 @@ static esp_err_t init_nvs(void)
     return err;
 }
 
-static esp_err_t init_uart(void)
-{
+static esp_err_t init_uart(void) {
     const uart_config_t config = {
         .baud_rate = RADIO_HCI_UART_BAUD,
         .data_bits = UART_DATA_8_BITS,
@@ -136,24 +130,21 @@ static esp_err_t init_uart(void)
     };
 
     ESP_RETURN_ON_ERROR(uart_driver_install(WROOM_HCI_UART, WROOM_UART_RX_BUFFER_SIZE,
-                                            WROOM_UART_TX_BUFFER_SIZE,
-                                            WROOM_UART_EVENT_QUEUE_SIZE, &s_uart_event_queue, 0),
+                                            WROOM_UART_TX_BUFFER_SIZE, WROOM_UART_EVENT_QUEUE_SIZE,
+                                            &s_uart_event_queue, 0),
                         TAG, "install HCI UART driver");
-    ESP_RETURN_ON_ERROR(uart_param_config(WROOM_HCI_UART, &config), TAG,
-                        "configure HCI UART");
+    ESP_RETURN_ON_ERROR(uart_param_config(WROOM_HCI_UART, &config), TAG, "configure HCI UART");
     ESP_RETURN_ON_ERROR(uart_set_pin(WROOM_HCI_UART, WROOM_HCI_TX_GPIO, WROOM_HCI_RX_GPIO,
                                      WROOM_HCI_RTS_GPIO, WROOM_HCI_CTS_GPIO),
                         TAG, "route HCI UART pins");
     ESP_RETURN_ON_ERROR(uart_flush_input(WROOM_HCI_UART), TAG, "flush HCI UART input");
 
     ESP_LOGI(TAG, "UART2 H4: baud=%d TX=%d RX=%d RTS=%d CTS=%d", RADIO_HCI_UART_BAUD,
-             WROOM_HCI_TX_GPIO, WROOM_HCI_RX_GPIO, WROOM_HCI_RTS_GPIO,
-             WROOM_HCI_CTS_GPIO);
+             WROOM_HCI_TX_GPIO, WROOM_HCI_RX_GPIO, WROOM_HCI_RTS_GPIO, WROOM_HCI_CTS_GPIO);
     return ESP_OK;
 }
 
-static esp_err_t init_controller(void)
-{
+static esp_err_t init_controller(void) {
     esp_bt_controller_config_t config = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
 
     ESP_RETURN_ON_ERROR(esp_bt_controller_init(&config), TAG, "initialize BT controller");
@@ -171,8 +162,7 @@ static esp_err_t init_controller(void)
     return ESP_OK;
 }
 
-static BaseType_t enqueue_host_to_controller(const radio_h4_packet_t *packet)
-{
+static BaseType_t enqueue_host_to_controller(const radio_h4_packet_t *packet) {
     if (xQueueSend(s_host_to_controller_queue, packet, 0) != pdTRUE) {
         s_diag.host_to_controller_queue_full++;
         request_recovery("host-to-controller queue exhausted");
@@ -183,8 +173,7 @@ static BaseType_t enqueue_host_to_controller(const radio_h4_packet_t *packet)
     return pdTRUE;
 }
 
-static BaseType_t enqueue_controller_to_host(const radio_h4_packet_t *packet)
-{
+static BaseType_t enqueue_controller_to_host(const radio_h4_packet_t *packet) {
     if (xQueueSend(s_controller_to_host_queue, packet, 0) != pdTRUE) {
         s_diag.controller_to_host_queue_full++;
         request_recovery("controller-to-host queue exhausted");
@@ -195,15 +184,13 @@ static BaseType_t enqueue_controller_to_host(const radio_h4_packet_t *packet)
     return pdTRUE;
 }
 
-static void vhci_notify_send_available(void)
-{
+static void vhci_notify_send_available(void) {
     if (s_controller_tx_task != NULL) {
         xTaskNotifyGive(s_controller_tx_task);
     }
 }
 
-static int vhci_notify_host_recv(uint8_t *data, uint16_t len)
-{
+static int vhci_notify_host_recv(uint8_t *data, uint16_t len) {
     const radio_h4_result_t validation = radio_h4_validate_complete(data, len);
     if (validation != RADIO_H4_OK) {
         s_diag.malformed_controller_packets++;
@@ -221,15 +208,14 @@ static const esp_vhci_host_callback_t s_vhci_callbacks = {
     .notify_host_recv = vhci_notify_host_recv,
 };
 
-static void uart_rx_task(void *arg)
-{
+static void uart_rx_task(void *arg) {
     (void)arg;
     uint8_t input[WROOM_UART_READ_CHUNK];
     radio_h4_parser_init(&s_uart_rx_parser);
 
     for (;;) {
-        const int received = uart_read_bytes(WROOM_HCI_UART, input, sizeof(input),
-                                             pdMS_TO_TICKS(20));
+        const int received =
+            uart_read_bytes(WROOM_HCI_UART, input, sizeof(input), pdMS_TO_TICKS(20));
         if (received < 0) {
             s_diag.uart_errors++;
             request_recovery("UART read failed");
@@ -244,8 +230,8 @@ static void uart_rx_task(void *arg)
         while (offset < (size_t)received && s_state != WROOM_STATE_RECOVERING) {
             size_t consumed = 0u;
             const radio_h4_result_t result =
-                radio_h4_parser_feed(&s_uart_rx_parser, input + offset,
-                                     (size_t)received - offset, &consumed, &s_uart_rx_packet);
+                radio_h4_parser_feed(&s_uart_rx_parser, input + offset, (size_t)received - offset,
+                                     &consumed, &s_uart_rx_packet);
             offset += consumed;
 
             if (result == RADIO_H4_PACKET_READY) {
@@ -265,8 +251,7 @@ static void uart_rx_task(void *arg)
     }
 }
 
-static void controller_tx_task(void *arg)
-{
+static void controller_tx_task(void *arg) {
     (void)arg;
     static radio_h4_packet_t packet;
 
@@ -289,8 +274,7 @@ static void controller_tx_task(void *arg)
     }
 }
 
-static void uart_tx_task(void *arg)
-{
+static void uart_tx_task(void *arg) {
     (void)arg;
     static radio_h4_packet_t packet;
 
@@ -307,8 +291,7 @@ static void uart_tx_task(void *arg)
     }
 }
 
-static void uart_event_task(void *arg)
-{
+static void uart_event_task(void *arg) {
     (void)arg;
     uart_event_t event;
 
@@ -331,27 +314,24 @@ static void uart_event_task(void *arg)
     }
 }
 
-static void diagnostic_task(void *arg)
-{
+static void diagnostic_task(void *arg) {
     (void)arg;
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(WROOM_DIAGNOSTIC_PERIOD_MS));
-        ESP_LOGI(TAG,
-                 "diag state=%s h2c=%" PRIu32 " c2h=%" PRIu32
-                 " malformed=%" PRIu32 "/%" PRIu32 " qfull=%" PRIu32 "/%" PRIu32
-                 " qhigh=%u/%u uart_err=%" PRIu32 " recoveries=%" PRIu32,
-                 state_name(s_state), s_diag.host_to_controller_packets,
-                 s_diag.controller_to_host_packets, s_diag.malformed_host_packets,
-                 s_diag.malformed_controller_packets, s_diag.host_to_controller_queue_full,
-                 s_diag.controller_to_host_queue_full,
-                 (unsigned)s_diag.host_to_controller_high_water,
-                 (unsigned)s_diag.controller_to_host_high_water, s_diag.uart_errors,
-                 s_diag.recovery_requests);
+        ESP_LOGI(
+            TAG,
+            "diag state=%s h2c=%" PRIu32 " c2h=%" PRIu32 " malformed=%" PRIu32 "/%" PRIu32
+            " qfull=%" PRIu32 "/%" PRIu32 " qhigh=%u/%u uart_err=%" PRIu32 " recoveries=%" PRIu32,
+            state_name(s_state), s_diag.host_to_controller_packets,
+            s_diag.controller_to_host_packets, s_diag.malformed_host_packets,
+            s_diag.malformed_controller_packets, s_diag.host_to_controller_queue_full,
+            s_diag.controller_to_host_queue_full, (unsigned)s_diag.host_to_controller_high_water,
+            (unsigned)s_diag.controller_to_host_high_water, s_diag.uart_errors,
+            s_diag.recovery_requests);
     }
 }
 
-static void recovery_task(void *arg)
-{
+static void recovery_task(void *arg) {
     (void)arg;
     for (;;) {
         (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -361,8 +341,7 @@ static void recovery_task(void *arg)
     }
 }
 
-static esp_err_t create_queues_and_recovery_task(void)
-{
+static esp_err_t create_queues_and_recovery_task(void) {
     s_host_to_controller_queue = xQueueCreate(WROOM_QUEUE_CAPACITY, sizeof(radio_h4_packet_t));
     s_controller_to_host_queue = xQueueCreate(WROOM_QUEUE_CAPACITY, sizeof(radio_h4_packet_t));
     if (s_host_to_controller_queue == NULL || s_controller_to_host_queue == NULL) {
@@ -375,10 +354,9 @@ static esp_err_t create_queues_and_recovery_task(void)
     return ESP_OK;
 }
 
-static esp_err_t create_transport_tasks(void)
-{
-    if (xTaskCreate(controller_tx_task, "hci_to_ctrl", 3072, NULL, 10,
-                    &s_controller_tx_task) != pdPASS ||
+static esp_err_t create_transport_tasks(void) {
+    if (xTaskCreate(controller_tx_task, "hci_to_ctrl", 3072, NULL, 10, &s_controller_tx_task) !=
+            pdPASS ||
         xTaskCreate(uart_rx_task, "hci_uart_rx", 3072, NULL, 10, NULL) != pdPASS ||
         xTaskCreate(uart_tx_task, "hci_uart_tx", 3072, NULL, 10, NULL) != pdPASS ||
         xTaskCreate(uart_event_task, "hci_uart_evt", 3072, NULL, 11, NULL) != pdPASS ||
@@ -388,8 +366,7 @@ static esp_err_t create_transport_tasks(void)
     return ESP_OK;
 }
 
-esp_err_t wroom_bridge_start(void)
-{
+esp_err_t wroom_bridge_start(void) {
     memset(&s_diag, 0, sizeof(s_diag));
     set_state(WROOM_STATE_INITIALIZING);
 
