@@ -27,6 +27,13 @@
 #define RADIO_USB_PRODUCT_INDEX 2u
 #define RADIO_USB_SERIAL_INDEX 3u
 
+#define RADIO_USB_INTERFACE_DESCRIPTOR(_itf, _alt, _num_ep, _class, _subclass, _protocol, _str)    \
+    9, TUSB_DESC_INTERFACE, (_itf), (_alt), (_num_ep), (_class), (_subclass), (_protocol), (_str)
+
+#define RADIO_USB_ENDPOINT_DESCRIPTOR(_addr, _attr, _packet_size, _interval)                         \
+    7, TUSB_DESC_ENDPOINT, (_addr), (_attr), (uint8_t)((_packet_size) & 0xffu),                      \
+        (uint8_t)(((_packet_size) >> 8) & 0xffu), (_interval)
+
 static const tusb_desc_device_t s_device_descriptor = {
     .bLength = sizeof(tusb_desc_device_t),
     .bDescriptorType = TUSB_DESC_DEVICE,
@@ -48,13 +55,13 @@ static const uint8_t s_full_speed_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, RADIO_USB_INTERFACE_COUNT, 0, RADIO_USB_CONFIGURATION_TOTAL_LEN, 0,
                           500),
 
-    TUD_INTERFACE_DESCRIPTOR(RADIO_USB_INTERFACE_NUMBER, 0, 3, TUSB_CLASS_WIRELESS_CONTROLLER, 0x01,
-                             0x01, 0),
+    RADIO_USB_INTERFACE_DESCRIPTOR(RADIO_USB_INTERFACE_NUMBER, 0, 3,
+                                   TUSB_CLASS_WIRELESS_CONTROLLER, 0x01, 0x01, 0),
 
-    TUD_ENDPOINT_DESCRIPTOR(RADIO_USB_EP_EVENT_IN, TUSB_XFER_INTERRUPT, RADIO_USB_EVENT_EP_SIZE,
-                            RADIO_USB_EVENT_INTERVAL),
-    TUD_ENDPOINT_DESCRIPTOR(RADIO_USB_EP_ACL_OUT, TUSB_XFER_BULK, RADIO_USB_ACL_EP_SIZE, 0),
-    TUD_ENDPOINT_DESCRIPTOR(RADIO_USB_EP_ACL_IN, TUSB_XFER_BULK, RADIO_USB_ACL_EP_SIZE, 0),
+    RADIO_USB_ENDPOINT_DESCRIPTOR(RADIO_USB_EP_EVENT_IN, TUSB_XFER_INTERRUPT,
+                                  RADIO_USB_EVENT_EP_SIZE, RADIO_USB_EVENT_INTERVAL),
+    RADIO_USB_ENDPOINT_DESCRIPTOR(RADIO_USB_EP_ACL_OUT, TUSB_XFER_BULK, RADIO_USB_ACL_EP_SIZE, 0),
+    RADIO_USB_ENDPOINT_DESCRIPTOR(RADIO_USB_EP_ACL_IN, TUSB_XFER_BULK, RADIO_USB_ACL_EP_SIZE, 0),
 };
 
 static const char s_language_id[] = {0x09, 0x04};
