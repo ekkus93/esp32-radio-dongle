@@ -10,6 +10,29 @@ permissions:
   contents: read
 
 jobs:
+  host-tests:
+    name: Host transport tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check C formatting
+        run: |
+          find firmware tests -type f \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \) \
+            -print0 | xargs -0 -r clang-format --dry-run --Werror
+
+      - name: Build H4 host tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic \
+            -Ifirmware/components/radio_h4/include \
+            firmware/components/radio_h4/radio_h4.c \
+            tests/host/test_radio_h4.c \
+            -o /tmp/test_radio_h4
+
+      - name: Run H4 host tests
+        run: /tmp/test_radio_h4
+
   build:
     name: Build ${{ matrix.name }}
     runs-on: ubuntu-latest
