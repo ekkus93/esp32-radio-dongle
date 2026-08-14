@@ -8,8 +8,9 @@ CONFIG_BT_CONTROLLER_ENABLED=y
 CONFIG_BTDM_CTRL_MODE_BTDM=y
 CONFIG_BTDM_CTRL_HCI_MODE_VHCI=y
 
-# Keep synchronous Classic audio on HCI so the bridge architecture can carry it.
-CONFIG_BTDM_CTRL_BR_EDR_MAX_SYNC_CONN=1
+# V1 intentionally omits SCO/eSCO voice transport because the S3 USB transport
+# exposes only command/event/ACL. Classic ACL profiles remain enabled.
+CONFIG_BTDM_CTRL_BR_EDR_MAX_SYNC_CONN=0
 CONFIG_BTDM_CTRL_BR_EDR_SCO_DATA_PATH_HCI=y
 
 # Deterministic bring-up first; low-power behavior can be qualified later.
