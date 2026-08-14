@@ -4,8 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static radio_h4_packet_t parse_one(radio_h4_parser_t *parser, const uint8_t *data, size_t len)
-{
+static radio_h4_packet_t parse_one(radio_h4_parser_t *parser, const uint8_t *data, size_t len) {
     radio_h4_packet_t packet;
     size_t consumed = 0u;
     assert(radio_h4_parser_feed(parser, data, len, &consumed, &packet) == RADIO_H4_PACKET_READY);
@@ -13,8 +12,7 @@ static radio_h4_packet_t parse_one(radio_h4_parser_t *parser, const uint8_t *dat
     return packet;
 }
 
-static void test_command(void)
-{
+static void test_command(void) {
     radio_h4_parser_t parser;
     radio_h4_parser_init(&parser);
     const uint8_t bytes[] = {0x01, 0x03, 0x0c, 0x00};
@@ -24,8 +22,7 @@ static void test_command(void)
     assert(radio_h4_validate_complete(bytes, sizeof(bytes)) == RADIO_H4_OK);
 }
 
-static void test_event(void)
-{
+static void test_event(void) {
     radio_h4_parser_t parser;
     radio_h4_parser_init(&parser);
     const uint8_t bytes[] = {0x04, 0x0e, 0x04, 0x01, 0x03, 0x0c, 0x00};
@@ -34,8 +31,7 @@ static void test_event(void)
     assert(radio_h4_validate_complete(bytes, sizeof(bytes)) == RADIO_H4_OK);
 }
 
-static void test_acl(void)
-{
+static void test_acl(void) {
     radio_h4_parser_t parser;
     radio_h4_parser_init(&parser);
     const uint8_t bytes[] = {0x02, 0x01, 0x20, 0x03, 0x00, 0xaa, 0xbb, 0xcc};
@@ -44,8 +40,7 @@ static void test_acl(void)
     assert(radio_h4_validate_complete(bytes, sizeof(bytes)) == RADIO_H4_OK);
 }
 
-static void test_sco(void)
-{
+static void test_sco(void) {
     radio_h4_parser_t parser;
     radio_h4_parser_init(&parser);
     const uint8_t bytes[] = {0x03, 0x01, 0x00, 0x02, 0xaa, 0xbb};
@@ -54,8 +49,7 @@ static void test_sco(void)
     assert(radio_h4_validate_complete(bytes, sizeof(bytes)) == RADIO_H4_OK);
 }
 
-static void test_fragmented(void)
-{
+static void test_fragmented(void) {
     radio_h4_parser_t parser;
     radio_h4_parser_init(&parser);
     radio_h4_packet_t packet;
@@ -66,15 +60,15 @@ static void test_fragmented(void)
 
     assert(radio_h4_parser_feed(&parser, first, sizeof(first), &consumed, &packet) == RADIO_H4_OK);
     assert(consumed == sizeof(first));
-    assert(radio_h4_parser_feed(&parser, second, sizeof(second), &consumed, &packet) == RADIO_H4_OK);
+    assert(radio_h4_parser_feed(&parser, second, sizeof(second), &consumed, &packet) ==
+           RADIO_H4_OK);
     assert(consumed == sizeof(second));
     assert(radio_h4_parser_feed(&parser, third, sizeof(third), &consumed, &packet) ==
            RADIO_H4_PACKET_READY);
     assert(packet.len == 4u);
 }
 
-static void test_back_to_back(void)
-{
+static void test_back_to_back(void) {
     radio_h4_parser_t parser;
     radio_h4_parser_init(&parser);
     radio_h4_packet_t packet;
@@ -91,8 +85,7 @@ static void test_back_to_back(void)
     assert(consumed_second == 3u);
 }
 
-static void test_invalid_type_fails_closed(void)
-{
+static void test_invalid_type_fails_closed(void) {
     radio_h4_parser_t parser;
     radio_h4_parser_init(&parser);
     radio_h4_packet_t packet;
@@ -110,8 +103,7 @@ static void test_invalid_type_fails_closed(void)
            RADIO_H4_PACKET_READY);
 }
 
-static void test_oversized_acl_fails_closed(void)
-{
+static void test_oversized_acl_fails_closed(void) {
     radio_h4_parser_t parser;
     radio_h4_parser_init(&parser);
     radio_h4_packet_t packet;
@@ -125,8 +117,7 @@ static void test_oversized_acl_fails_closed(void)
     assert(radio_h4_validate_complete(header, sizeof(header)) == RADIO_H4_ERR_LENGTH);
 }
 
-static void test_truncated(void)
-{
+static void test_truncated(void) {
     radio_h4_parser_t parser;
     radio_h4_parser_init(&parser);
     radio_h4_packet_t packet;
@@ -140,14 +131,12 @@ static void test_truncated(void)
     assert(radio_h4_parser_finish(&parser) == RADIO_H4_ERR_FAILED_STATE);
 }
 
-static void test_trailing_bytes_rejected(void)
-{
+static void test_trailing_bytes_rejected(void) {
     const uint8_t too_long[] = {0x04, 0x0e, 0x00, 0xff};
     assert(radio_h4_validate_complete(too_long, sizeof(too_long)) == RADIO_H4_ERR_LENGTH);
 }
 
-static void test_queue_exhaustion(void)
-{
+static void test_queue_exhaustion(void) {
     radio_h4_queue_t queue;
     radio_h4_queue_init(&queue);
     const radio_h4_packet_t packet = {.bytes = {0x01, 0x03, 0x0c, 0x00}, .len = 4u};
@@ -169,8 +158,7 @@ static void test_queue_exhaustion(void)
     assert(radio_h4_queue_pop(&queue) == RADIO_H4_ERR_QUEUE_EMPTY);
 }
 
-int main(void)
-{
+int main(void) {
     test_command();
     test_event();
     test_acl();

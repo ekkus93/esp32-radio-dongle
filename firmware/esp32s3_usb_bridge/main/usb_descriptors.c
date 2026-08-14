@@ -20,7 +20,7 @@
 #define RADIO_USB_ACL_EP_SIZE 64u
 #define RADIO_USB_EVENT_INTERVAL 1u
 
-#define RADIO_USB_CONFIGURATION_TOTAL_LEN                                                     \
+#define RADIO_USB_CONFIGURATION_TOTAL_LEN                                                          \
     (TUD_CONFIG_DESC_LEN + sizeof(tusb_desc_interface_t) + (3u * sizeof(tusb_desc_endpoint_t)))
 
 #define RADIO_USB_MANUFACTURER_INDEX 1u
@@ -48,11 +48,11 @@ static const uint8_t s_full_speed_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, RADIO_USB_INTERFACE_COUNT, 0, RADIO_USB_CONFIGURATION_TOTAL_LEN, 0,
                           500),
 
-    TUD_INTERFACE_DESCRIPTOR(RADIO_USB_INTERFACE_NUMBER, 0, 3,
-                             TUSB_CLASS_WIRELESS_CONTROLLER, 0x01, 0x01, 0),
+    TUD_INTERFACE_DESCRIPTOR(RADIO_USB_INTERFACE_NUMBER, 0, 3, TUSB_CLASS_WIRELESS_CONTROLLER, 0x01,
+                             0x01, 0),
 
-    TUD_ENDPOINT_DESCRIPTOR(RADIO_USB_EP_EVENT_IN, TUSB_XFER_INTERRUPT,
-                            RADIO_USB_EVENT_EP_SIZE, RADIO_USB_EVENT_INTERVAL),
+    TUD_ENDPOINT_DESCRIPTOR(RADIO_USB_EP_EVENT_IN, TUSB_XFER_INTERRUPT, RADIO_USB_EVENT_EP_SIZE,
+                            RADIO_USB_EVENT_INTERVAL),
     TUD_ENDPOINT_DESCRIPTOR(RADIO_USB_EP_ACL_OUT, TUSB_XFER_BULK, RADIO_USB_ACL_EP_SIZE, 0),
     TUD_ENDPOINT_DESCRIPTOR(RADIO_USB_EP_ACL_IN, TUSB_XFER_BULK, RADIO_USB_ACL_EP_SIZE, 0),
 };
@@ -69,34 +69,25 @@ static const char *s_string_descriptors[] = {
 _Static_assert(sizeof(s_full_speed_configuration) == RADIO_USB_CONFIGURATION_TOTAL_LEN,
                "USB configuration descriptor length mismatch");
 
-void radio_usb_descriptors_init(void)
-{
+void radio_usb_descriptors_init(void) {
     uint8_t mac[6] = {0};
     if (esp_efuse_mac_get_default(mac) != ESP_OK) {
         (void)snprintf(s_serial_number, sizeof(s_serial_number), "S3UNKNOWN");
         return;
     }
 
-    (void)snprintf(s_serial_number, sizeof(s_serial_number), "%02X%02X%02X%02X%02X%02X",
-                   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    (void)snprintf(s_serial_number, sizeof(s_serial_number), "%02X%02X%02X%02X%02X%02X", mac[0],
+                   mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
-const tusb_desc_device_t *radio_usb_device_descriptor(void)
-{
-    return &s_device_descriptor;
-}
+const tusb_desc_device_t *radio_usb_device_descriptor(void) { return &s_device_descriptor; }
 
-const uint8_t *radio_usb_full_speed_configuration_descriptor(void)
-{
+const uint8_t *radio_usb_full_speed_configuration_descriptor(void) {
     return s_full_speed_configuration;
 }
 
-const char **radio_usb_string_descriptors(void)
-{
-    return s_string_descriptors;
-}
+const char **radio_usb_string_descriptors(void) { return s_string_descriptors; }
 
-int radio_usb_string_descriptor_count(void)
-{
+int radio_usb_string_descriptor_count(void) {
     return (int)(sizeof(s_string_descriptors) / sizeof(s_string_descriptors[0]));
 }
