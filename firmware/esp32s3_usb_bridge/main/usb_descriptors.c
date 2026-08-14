@@ -20,8 +20,8 @@
 #define RADIO_USB_ACL_EP_SIZE 64u
 #define RADIO_USB_EVENT_INTERVAL 1u
 
-#define RADIO_USB_CONFIGURATION_TOTAL_LEN \
-    (TUD_CONFIG_DESC_LEN + TUD_INTERFACE_DESC_LEN + (3u * TUD_ENDPOINT_DESC_LEN))
+#define RADIO_USB_CONFIGURATION_TOTAL_LEN                                                     \
+    (TUD_CONFIG_DESC_LEN + sizeof(tusb_desc_interface_t) + (3u * sizeof(tusb_desc_endpoint_t)))
 
 #define RADIO_USB_MANUFACTURER_INDEX 1u
 #define RADIO_USB_PRODUCT_INDEX 2u
