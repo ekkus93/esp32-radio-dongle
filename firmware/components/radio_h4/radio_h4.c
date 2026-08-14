@@ -45,20 +45,51 @@ size_t radio_h4_payload_limit(uint8_t packet_type)
     }
 }
 
-static size_t declared_payload_length(const radio_h4_parser_t *parser)
+static size_t declared_payload_length_from_bytes(const uint8_t *bytes)
 {
-    switch (parser->bytes[0]) {
+    switch (bytes[0]) {
     case RADIO_H4_TYPE_COMMAND:
-        return parser->bytes[3];
+        return bytes[3];
     case RADIO_H4_TYPE_ACL:
-        return read_le16(&parser->bytes[3]);
+        return read_le16(&bytes[3]);
     case RADIO_H4_TYPE_SCO:
-        return parser->bytes[3];
+        return bytes[3];
     case RADIO_H4_TYPE_EVENT:
-        return parser->bytes[2];
+        return bytes[2];
     default:
         return 0u;
     }
+}
+
+static size_t declared_payload_length(const radio_h4_parser_t *parser)
+{
+    return declared_payload_length_from_bytes(parser->bytes);
+}
+
+radio_h4_result_t radio_h4_validate_complete(const uint8_t *data, size_t data_len)
+{
+    if (data == NULL || data_len == 0u) {
+        return RADIO_H4_ERR_ARGUMENT;
+    }
+    if (!radio_h4_packet_type_supported(data[0])) {
+        return RADIO_H4_ERR_PACKET_TYPE;
+    }
+
+    const size_t header_size = radio_h4_header_size(data[0]);
+    if (data_len < header_size) {
+        return RADIO_H4_ERR_TRUNCATED;
+    }
+
+    const size_t payload_len = declared_payload_length_from_bytes(data);
+    if (payload_len > radio_h4_payload_limit(data[0]) ||
+        header_size + payload_len > RADIO_H4_MAX_PACKET_SIZE) {
+        return RADIO_H4_ERR_LENGTH;
+    }
+    if (data_len != header_size + payload_len) {
+        return data_len < header_size + payload_len ? RADIO_H4_ERR_TRUNCATED : RADIO_H4_ERR_LENGTH;
+    }
+
+    return RADIO_H4_OK;
 }
 
 void radio_h4_parser_init(radio_h4_parser_t *parser)
