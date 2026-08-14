@@ -12,7 +12,7 @@
 #define RADIO_USB_BTH_APP_SUBCLASS 0x01u
 #define RADIO_USB_BTH_PRIMARY_CONTROLLER_PROTOCOL 0x01u
 
-#define RADIO_USB_BTH_PRIMARY_DESC_LEN \
+#define RADIO_USB_BTH_PRIMARY_DESC_LEN                                                             \
     (sizeof(tusb_desc_interface_t) + (3u * sizeof(tusb_desc_endpoint_t)))
 
 typedef struct {
@@ -39,73 +39,57 @@ typedef struct {
 static radio_usb_bth_state_t s_state;
 CFG_TUD_MEM_SECTION static radio_usb_bth_buffers_t s_buffers;
 
-TU_ATTR_WEAK void radio_usb_bth_hci_command_received_cb(const uint8_t *command, size_t command_len)
-{
+TU_ATTR_WEAK void radio_usb_bth_hci_command_received_cb(const uint8_t *command,
+                                                        size_t command_len) {
     (void)command;
     (void)command_len;
 }
 
-TU_ATTR_WEAK void radio_usb_bth_acl_received_cb(const uint8_t *acl, uint16_t acl_len)
-{
+TU_ATTR_WEAK void radio_usb_bth_acl_received_cb(const uint8_t *acl, uint16_t acl_len) {
     (void)acl;
     (void)acl_len;
 }
 
-TU_ATTR_WEAK void radio_usb_bth_event_sent_cb(uint16_t event_len)
-{
-    (void)event_len;
-}
+TU_ATTR_WEAK void radio_usb_bth_event_sent_cb(uint16_t event_len) { (void)event_len; }
 
-TU_ATTR_WEAK void radio_usb_bth_acl_sent_cb(uint16_t acl_len)
-{
-    (void)acl_len;
-}
+TU_ATTR_WEAK void radio_usb_bth_acl_sent_cb(uint16_t acl_len) { (void)acl_len; }
 
-TU_ATTR_WEAK void radio_usb_bth_protocol_error_cb(void)
-{
-}
+TU_ATTR_WEAK void radio_usb_bth_protocol_error_cb(void) {}
 
-static uint16_t read_le16(const uint8_t *bytes)
-{
+static uint16_t read_le16(const uint8_t *bytes) {
     return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8);
 }
 
-static bool event_packet_valid(const uint8_t *event, uint16_t event_len)
-{
+static bool event_packet_valid(const uint8_t *event, uint16_t event_len) {
     if (event == NULL || event_len < 2u || event_len > RADIO_USB_BTH_EVENT_MAX_SIZE) {
         return false;
     }
     return event_len == (uint16_t)(2u + event[1]);
 }
 
-static bool acl_packet_valid(const uint8_t *acl, uint16_t acl_len)
-{
+static bool acl_packet_valid(const uint8_t *acl, uint16_t acl_len) {
     if (acl == NULL || acl_len < 4u || acl_len > RADIO_USB_BTH_ACL_MAX_SIZE) {
         return false;
     }
     return acl_len == (uint16_t)(4u + read_le16(&acl[2]));
 }
 
-static void acl_rx_reset(void)
-{
+static void acl_rx_reset(void) {
     s_state.acl_rx_used = 0u;
     s_state.acl_rx_expected = 0u;
 }
 
-static bool arm_acl_out(uint8_t rhport)
-{
+static bool arm_acl_out(uint8_t rhport) {
     return usbd_edpt_xfer(rhport, s_state.acl_out_ep, s_buffers.acl_out_ep,
                           sizeof(s_buffers.acl_out_ep));
 }
 
-static void protocol_error_and_reset_acl_rx(void)
-{
+static void protocol_error_and_reset_acl_rx(void) {
     acl_rx_reset();
     radio_usb_bth_protocol_error_cb();
 }
 
-static bool ingest_acl_out_chunk(const uint8_t *chunk, uint32_t chunk_len)
-{
+static bool ingest_acl_out_chunk(const uint8_t *chunk, uint32_t chunk_len) {
     if (chunk_len == 0u) {
         if (s_state.acl_rx_used != 0u) {
             protocol_error_and_reset_acl_rx();
@@ -156,20 +140,17 @@ static bool ingest_acl_out_chunk(const uint8_t *chunk, uint32_t chunk_len)
     return true;
 }
 
-bool radio_usb_bth_event_ready(void)
-{
+bool radio_usb_bth_event_ready(void) {
     return s_state.opened && !usbd_edpt_busy(0, s_state.event_in_ep) &&
            !usbd_edpt_stalled(0, s_state.event_in_ep);
 }
 
-bool radio_usb_bth_acl_ready(void)
-{
+bool radio_usb_bth_acl_ready(void) {
     return s_state.opened && !usbd_edpt_busy(0, s_state.acl_in_ep) &&
            !usbd_edpt_stalled(0, s_state.acl_in_ep) && !s_state.acl_zlp_pending;
 }
 
-bool radio_usb_bth_event_send(const uint8_t *event, uint16_t event_len)
-{
+bool radio_usb_bth_event_send(const uint8_t *event, uint16_t event_len) {
     if (!s_state.opened || !event_packet_valid(event, event_len) ||
         !usbd_edpt_claim(0, s_state.event_in_ep)) {
         return false;
@@ -183,8 +164,7 @@ bool radio_usb_bth_event_send(const uint8_t *event, uint16_t event_len)
     return true;
 }
 
-bool radio_usb_bth_acl_send(const uint8_t *acl, uint16_t acl_len)
-{
+bool radio_usb_bth_acl_send(const uint8_t *acl, uint16_t acl_len) {
     if (!s_state.opened || !acl_packet_valid(acl, acl_len) || s_state.acl_zlp_pending ||
         !usbd_edpt_claim(0, s_state.acl_in_ep)) {
         return false;
@@ -198,26 +178,20 @@ bool radio_usb_bth_acl_send(const uint8_t *acl, uint16_t acl_len)
     return true;
 }
 
-static void class_init(void)
-{
-    memset(&s_state, 0, sizeof(s_state));
-}
+static void class_init(void) { memset(&s_state, 0, sizeof(s_state)); }
 
-static bool class_deinit(void)
-{
+static bool class_deinit(void) {
     memset(&s_state, 0, sizeof(s_state));
     return true;
 }
 
-static void class_reset(uint8_t rhport)
-{
+static void class_reset(uint8_t rhport) {
     (void)rhport;
     memset(&s_state, 0, sizeof(s_state));
 }
 
 static uint16_t class_open(uint8_t rhport, const tusb_desc_interface_t *interface,
-                           uint16_t max_len)
-{
+                           uint16_t max_len) {
     if (interface == NULL || interface->bInterfaceClass != TUSB_CLASS_WIRELESS_CONTROLLER ||
         interface->bInterfaceSubClass != RADIO_USB_BTH_APP_SUBCLASS ||
         interface->bInterfaceProtocol != RADIO_USB_BTH_PRIMARY_CONTROLLER_PROTOCOL ||
@@ -225,8 +199,7 @@ static uint16_t class_open(uint8_t rhport, const tusb_desc_interface_t *interfac
         return 0u;
     }
 
-    const tusb_desc_endpoint_t *endpoint =
-        (const tusb_desc_endpoint_t *)tu_desc_next(interface);
+    const tusb_desc_endpoint_t *endpoint = (const tusb_desc_endpoint_t *)tu_desc_next(interface);
     if (endpoint->bDescriptorType != TUSB_DESC_ENDPOINT ||
         endpoint->bmAttributes.xfer != TUSB_XFER_INTERRUPT ||
         tu_edpt_dir(endpoint->bEndpointAddress) != TUSB_DIR_IN ||
@@ -260,8 +233,7 @@ static uint16_t class_open(uint8_t rhport, const tusb_desc_interface_t *interfac
     return RADIO_USB_BTH_PRIMARY_DESC_LEN;
 }
 
-static bool command_request_matches(const tusb_control_request_t *request)
-{
+static bool command_request_matches(const tusb_control_request_t *request) {
     if (request->bmRequestType_bit.type != TUSB_REQ_TYPE_CLASS || request->bRequest != 0u ||
         request->wValue != 0u) {
         return false;
@@ -277,8 +249,7 @@ static bool command_request_matches(const tusb_control_request_t *request)
 }
 
 static bool class_control_xfer(uint8_t rhport, uint8_t stage,
-                               const tusb_control_request_t *request)
-{
+                               const tusb_control_request_t *request) {
     if (!s_state.opened || request == NULL || !command_request_matches(request) ||
         request->wLength > sizeof(s_buffers.hci_command)) {
         return false;
@@ -294,8 +265,7 @@ static bool class_control_xfer(uint8_t rhport, uint8_t stage,
 }
 
 static bool class_xfer(uint8_t rhport, uint8_t ep_addr, xfer_result_t result,
-                       uint32_t xferred_bytes)
-{
+                       uint32_t xferred_bytes) {
     if (!s_state.opened) {
         return false;
     }
@@ -363,8 +333,7 @@ static const usbd_class_driver_t s_radio_bth_driver = {
     .sof = NULL,
 };
 
-usbd_class_driver_t const *usbd_app_driver_get_cb(uint8_t *driver_count)
-{
+usbd_class_driver_t const *usbd_app_driver_get_cb(uint8_t *driver_count) {
     if (driver_count == NULL) {
         return NULL;
     }
