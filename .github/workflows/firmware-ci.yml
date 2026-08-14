@@ -1,0 +1,36 @@
+name: Firmware CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ESP32-WROOM-32 controller
+            target: esp32
+            path: firmware/esp32_wroom_bt_controller
+          - name: ESP32-S3 USB bridge
+            target: esp32s3
+            path: firmware/esp32s3_usb_bridge
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build with ESP-IDF v5.5.5
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.5
+          target: ${{ matrix.target }}
+          path: ${{ matrix.path }}
