@@ -45,8 +45,8 @@ static const tusb_desc_device_t s_device_descriptor = {
 };
 
 static const uint8_t s_full_speed_configuration[] = {
-    TUD_CONFIG_DESCRIPTOR(1, RADIO_USB_INTERFACE_COUNT, 0, RADIO_USB_CONFIGURATION_TOTAL_LEN,
-                          TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 250),
+    TUD_CONFIG_DESCRIPTOR(1, RADIO_USB_INTERFACE_COUNT, 0, RADIO_USB_CONFIGURATION_TOTAL_LEN, 0,
+                          500),
 
     TUD_INTERFACE_DESCRIPTOR(RADIO_USB_INTERFACE_NUMBER, 0, 3,
                              TUSB_CLASS_WIRELESS_CONTROLLER, 0x01, 0x01, 0),
