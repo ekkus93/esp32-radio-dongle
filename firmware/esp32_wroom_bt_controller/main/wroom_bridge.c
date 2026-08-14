@@ -150,8 +150,6 @@ static esp_err_t init_controller(void) {
     ESP_RETURN_ON_ERROR(esp_bt_controller_init(&config), TAG, "initialize BT controller");
     ESP_RETURN_ON_ERROR(esp_bt_controller_enable(ESP_BT_MODE_BTDM), TAG,
                         "enable dual-mode BT controller");
-    ESP_RETURN_ON_ERROR(esp_bredr_sco_datapath_set(ESP_SCO_DATA_PATH_HCI), TAG,
-                        "select HCI SCO data path");
 
     if (esp_bt_controller_get_status() != ESP_BT_CONTROLLER_STATUS_ENABLED) {
         ESP_LOGE(TAG, "BT controller did not reach ENABLED state");
