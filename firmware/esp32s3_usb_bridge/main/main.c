@@ -18,8 +18,7 @@
 
 static const char *TAG = "s3_usb_bridge";
 
-void app_main(void)
-{
+void app_main(void) {
     ESP_LOGI(TAG, "ESP32 Radio Dongle S3 USB bridge starting");
     ESP_LOGI(TAG, "ESP-IDF: %s", esp_get_idf_version());
 
