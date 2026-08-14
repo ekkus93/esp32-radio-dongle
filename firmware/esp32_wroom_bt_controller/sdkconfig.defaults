@@ -1,2 +1,16 @@
 # ESP32 Radio Dongle V1: ESP32-WROOM-32 controller target.
 CONFIG_IDF_TARGET="esp32"
+
+# Controller-only dual-mode Bluetooth: the host stack lives on Windows/Linux.
+CONFIG_BT_ENABLED=y
+CONFIG_BT_CONTROLLER_ONLY=y
+CONFIG_BT_CONTROLLER_ENABLED=y
+CONFIG_BTDM_CTRL_MODE_BTDM=y
+CONFIG_BTDM_CTRL_HCI_MODE_VHCI=y
+
+# Keep synchronous Classic audio on HCI so the bridge architecture can carry it.
+CONFIG_BTDM_CTRL_BR_EDR_MAX_SYNC_CONN=1
+CONFIG_BTDM_CTRL_BR_EDR_SCO_DATA_PATH_HCI=y
+
+# Deterministic bring-up first; low-power behavior can be qualified later.
+# CONFIG_BTDM_CTRL_MODEM_SLEEP is not set
