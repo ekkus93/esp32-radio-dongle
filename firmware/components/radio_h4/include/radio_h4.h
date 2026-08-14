@@ -63,6 +63,7 @@ radio_h4_result_t radio_h4_parser_feed(radio_h4_parser_t *parser, const uint8_t 
                                        size_t data_len, size_t *consumed,
                                        radio_h4_packet_t *packet_out);
 radio_h4_result_t radio_h4_parser_finish(radio_h4_parser_t *parser);
+radio_h4_result_t radio_h4_validate_complete(const uint8_t *data, size_t data_len);
 
 bool radio_h4_packet_type_supported(uint8_t packet_type);
 size_t radio_h4_header_size(uint8_t packet_type);
