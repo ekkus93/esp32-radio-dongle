@@ -2,19 +2,16 @@
 
 #include <string.h>
 
-static uint16_t read_le16(const uint8_t *bytes)
-{
+static uint16_t read_le16(const uint8_t *bytes) {
     return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8);
 }
 
-bool radio_h4_packet_type_supported(uint8_t packet_type)
-{
+bool radio_h4_packet_type_supported(uint8_t packet_type) {
     return packet_type == RADIO_H4_TYPE_COMMAND || packet_type == RADIO_H4_TYPE_ACL ||
            packet_type == RADIO_H4_TYPE_SCO || packet_type == RADIO_H4_TYPE_EVENT;
 }
 
-size_t radio_h4_header_size(uint8_t packet_type)
-{
+size_t radio_h4_header_size(uint8_t packet_type) {
     switch (packet_type) {
     case RADIO_H4_TYPE_COMMAND:
         return 4u; /* type + opcode(2) + parameter length */
@@ -29,8 +26,7 @@ size_t radio_h4_header_size(uint8_t packet_type)
     }
 }
 
-size_t radio_h4_payload_limit(uint8_t packet_type)
-{
+size_t radio_h4_payload_limit(uint8_t packet_type) {
     switch (packet_type) {
     case RADIO_H4_TYPE_COMMAND:
         return RADIO_H4_COMMAND_MAX_PAYLOAD;
@@ -45,8 +41,7 @@ size_t radio_h4_payload_limit(uint8_t packet_type)
     }
 }
 
-static size_t declared_payload_length_from_bytes(const uint8_t *bytes)
-{
+static size_t declared_payload_length_from_bytes(const uint8_t *bytes) {
     switch (bytes[0]) {
     case RADIO_H4_TYPE_COMMAND:
         return bytes[3];
@@ -61,13 +56,11 @@ static size_t declared_payload_length_from_bytes(const uint8_t *bytes)
     }
 }
 
-static size_t declared_payload_length(const radio_h4_parser_t *parser)
-{
+static size_t declared_payload_length(const radio_h4_parser_t *parser) {
     return declared_payload_length_from_bytes(parser->bytes);
 }
 
-radio_h4_result_t radio_h4_validate_complete(const uint8_t *data, size_t data_len)
-{
+radio_h4_result_t radio_h4_validate_complete(const uint8_t *data, size_t data_len) {
     if (data == NULL || data_len == 0u) {
         return RADIO_H4_ERR_ARGUMENT;
     }
@@ -92,20 +85,15 @@ radio_h4_result_t radio_h4_validate_complete(const uint8_t *data, size_t data_le
     return RADIO_H4_OK;
 }
 
-void radio_h4_parser_init(radio_h4_parser_t *parser)
-{
+void radio_h4_parser_init(radio_h4_parser_t *parser) {
     if (parser != NULL) {
         memset(parser, 0, sizeof(*parser));
     }
 }
 
-void radio_h4_parser_reset(radio_h4_parser_t *parser)
-{
-    radio_h4_parser_init(parser);
-}
+void radio_h4_parser_reset(radio_h4_parser_t *parser) { radio_h4_parser_init(parser); }
 
-static void parser_start_next_packet(radio_h4_parser_t *parser)
-{
+static void parser_start_next_packet(radio_h4_parser_t *parser) {
     parser->used = 0u;
     parser->expected = 0u;
     parser->header_size = 0u;
@@ -113,8 +101,7 @@ static void parser_start_next_packet(radio_h4_parser_t *parser)
 
 radio_h4_result_t radio_h4_parser_feed(radio_h4_parser_t *parser, const uint8_t *data,
                                        size_t data_len, size_t *consumed,
-                                       radio_h4_packet_t *packet_out)
-{
+                                       radio_h4_packet_t *packet_out) {
     if (parser == NULL || consumed == NULL || packet_out == NULL ||
         (data == NULL && data_len != 0u)) {
         return RADIO_H4_ERR_ARGUMENT;
@@ -167,8 +154,7 @@ radio_h4_result_t radio_h4_parser_feed(radio_h4_parser_t *parser, const uint8_t 
     return RADIO_H4_OK;
 }
 
-radio_h4_result_t radio_h4_parser_finish(radio_h4_parser_t *parser)
-{
+radio_h4_result_t radio_h4_parser_finish(radio_h4_parser_t *parser) {
     if (parser == NULL) {
         return RADIO_H4_ERR_ARGUMENT;
     }
@@ -182,16 +168,13 @@ radio_h4_result_t radio_h4_parser_finish(radio_h4_parser_t *parser)
     return RADIO_H4_OK;
 }
 
-void radio_h4_queue_init(radio_h4_queue_t *queue)
-{
+void radio_h4_queue_init(radio_h4_queue_t *queue) {
     if (queue != NULL) {
         memset(queue, 0, sizeof(*queue));
     }
 }
 
-radio_h4_result_t radio_h4_queue_push(radio_h4_queue_t *queue,
-                                      const radio_h4_packet_t *packet)
-{
+radio_h4_result_t radio_h4_queue_push(radio_h4_queue_t *queue, const radio_h4_packet_t *packet) {
     if (queue == NULL || packet == NULL || packet->len == 0u ||
         packet->len > RADIO_H4_MAX_PACKET_SIZE) {
         return RADIO_H4_ERR_ARGUMENT;
@@ -211,8 +194,7 @@ radio_h4_result_t radio_h4_queue_push(radio_h4_queue_t *queue,
 }
 
 radio_h4_result_t radio_h4_queue_peek(const radio_h4_queue_t *queue,
-                                      const radio_h4_packet_t **packet)
-{
+                                      const radio_h4_packet_t **packet) {
     if (queue == NULL || packet == NULL) {
         return RADIO_H4_ERR_ARGUMENT;
     }
@@ -224,8 +206,7 @@ radio_h4_result_t radio_h4_queue_peek(const radio_h4_queue_t *queue,
     return RADIO_H4_OK;
 }
 
-radio_h4_result_t radio_h4_queue_pop(radio_h4_queue_t *queue)
-{
+radio_h4_result_t radio_h4_queue_pop(radio_h4_queue_t *queue) {
     if (queue == NULL) {
         return RADIO_H4_ERR_ARGUMENT;
     }
