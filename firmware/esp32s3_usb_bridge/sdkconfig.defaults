@@ -1,2 +1,21 @@
 # ESP32 Radio Dongle V1: ESP32-S3 USB bridge target.
 CONFIG_IDF_TARGET="esp32s3"
+
+# The project supplies its own primary-controller USB HCI class driver so it can
+# expose command/event/ACL without advertising TinyUSB's currently nonfunctional
+# SCO/ISO data path.
+# CONFIG_TINYUSB_BTH_ENABLED is not set
+
+# Lifecycle events are part of the S3 bridge state machine.
+CONFIG_TINYUSB_SUSPEND_CALLBACK=y
+CONFIG_TINYUSB_RESUME_CALLBACK=y
+CONFIG_TINYUSB_DEBUG_LEVEL=1
+
+# V1 exposes Bluetooth only. Keep unrelated USB functions disabled.
+# CONFIG_TINYUSB_CDC_ENABLED is not set
+# CONFIG_TINYUSB_MSC_ENABLED is not set
+CONFIG_TINYUSB_MIDI_COUNT=0
+CONFIG_TINYUSB_HID_COUNT=0
+CONFIG_TINYUSB_DFU_MODE_NONE=y
+CONFIG_TINYUSB_NET_MODE_NONE=y
+CONFIG_TINYUSB_VENDOR_COUNT=0
