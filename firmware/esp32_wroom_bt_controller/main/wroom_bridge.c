@@ -7,6 +7,7 @@
 
 #include "driver/uart.h"
 #include "esp_bt.h"
+#include "esp_check.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_system.h"
