@@ -18,8 +18,7 @@
 
 static const char *TAG = "wroom_bt_ctrl";
 
-void app_main(void)
-{
+void app_main(void) {
     ESP_LOGI(TAG, "ESP32 Radio Dongle WROOM controller starting");
     ESP_LOGI(TAG, "ESP-IDF: %s", esp_get_idf_version());
 
