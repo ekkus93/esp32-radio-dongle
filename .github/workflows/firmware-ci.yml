@@ -25,9 +25,11 @@ jobs:
           clang-format -i "${files[@]}"
           git diff --exit-code -- firmware tests
 
-      - name: Capture formatting patch
+      - name: Capture formatted source
         if: failure()
-        run: git diff -- firmware tests > /tmp/clang-format.patch
+        run: |
+          git diff -- firmware tests > /tmp/clang-format.patch
+          tar -czf /tmp/clang-formatted-source.tar.gz firmware tests .clang-format
 
       - name: Upload formatting patch
         if: failure()
@@ -35,6 +37,14 @@ jobs:
         with:
           name: clang-format-patch
           path: /tmp/clang-format.patch
+          if-no-files-found: error
+
+      - name: Upload formatted source
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: clang-formatted-source
+          path: /tmp/clang-formatted-source.tar.gz
           if-no-files-found: error
 
       - name: Build H4 host tests
