@@ -82,3 +82,12 @@ jobs:
           esp_idf_version: v5.5.5
           target: ${{ matrix.target }}
           path: ${{ matrix.path }}
+          command: set -o pipefail; idf.py build 2>&1 | tee ci-build.log
+
+      - name: Upload failed firmware build log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: firmware-build-log-${{ matrix.target }}
+          path: ${{ matrix.path }}/ci-build.log
+          if-no-files-found: error
