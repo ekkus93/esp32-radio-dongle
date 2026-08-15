@@ -62,21 +62,34 @@ Board-selection evidence is complete:
 - The WROOM board previously enumerated its CP210x USB-UART bridge as `10c4:ea60`.
 - Pin/native-USB compatibility is documented in `docs/V1_BOARD_VERIFICATION.md` and `docs/HARDWARE.md`.
 
+V1-103 static/datasheet electrical preflight is complete:
+
+- `docs/V1_ELECTRICAL_PREFLIGHT.md` records the detailed result.
+- Both MCU I/O domains are nominally 3.3 V and their documented DC logic levels are mutually compatible.
+- At 3.3 V, the conservative documented high-level margin is 0.165 V and low-level margin is 0.495 V.
+- S3 GPIO4/5/6/7 do not overlap the ESP32-S3 strapping pins GPIO0/3/45/46.
+- WROOM GPIO16/17/25/26 do not overlap the original-ESP32 strapping pins GPIO0/2/5/12/15.
+- Production and smoke firmware configure TX->RX and RTS->CTS with no intentional output-to-output crossing.
+- `scripts/check-electrical-contract.sh` enforces the pin/direction/flow-control source contract in Firmware CI.
+- The prototype power policy explicitly forbids tying the independent 3.3 V or 5 V/VBUS rails together.
+- The direct GPIO link is not claimed to tolerate one MCU board being fully unpowered while the peer actively drives TX/RTS; the prior asymmetric cold-power test was removed.
+
 Software preparation complete:
 
 - dedicated WROOM smoke firmware: `firmware/bringup/esp32_wroom_uart_smoke/`;
 - dedicated S3 smoke firmware: `firmware/bringup/esp32s3_uart_smoke/`;
 - shared bidirectional UART/RTS-CTS test logic: `firmware/components/radio_uart_smoke/`;
+- electrical preflight: `docs/V1_ELECTRICAL_PREFLIGHT.md`;
 - bench procedure: `docs/V1_UART_BRINGUP.md`; and
 - evidence template: `docs/V1_UART_BRINGUP_EVIDENCE.md`.
 
 Still required when device testing resumes:
 
-- five-wire connection/power evidence;
-- physical common-ground verification;
+- physical common-ground/power-arrangement evidence for V1-103;
+- five-wire connection evidence;
 - bidirectional UART pass;
 - both RTS/CTS crossings under measured backpressure; and
-- reset/boot-state checks.
+- reset/boot-state checks with both MCU boards powered normally.
 
 ### V1-G30 — WROOM Bluetooth controller
 
@@ -227,7 +240,7 @@ Audit conclusions:
 
 ### V1-G120 — Documentation/user experience
 
-Software documentation exists for build, flashing, selected boards/wiring, usage, troubleshooting, limitations, UART bring-up, security review, release configuration, USB transport, evidence mapping, and the V1-1305 audit.
+Software documentation exists for build, flashing, selected boards/wiring, electrical preflight, usage, troubleshooting, limitations, UART bring-up, security review, release configuration, USB transport, evidence mapping, and the V1-1305 audit.
 
 The gate remains open because the complete instructions must eventually be validated against real boards and clean Windows/Linux hosts.
 
