@@ -2,6 +2,23 @@
 
 This file records intentional V1 limits separately from unresolved defects. It must be updated with actual host/peripheral test evidence before V1 release.
 
+## Current validation boundary
+
+Physical ESP32 and host-device testing is intentionally deferred at the current development checkpoint.
+
+The repository has software/CI evidence for H4 framing and queues, production USB Bluetooth class behavior under a fake TinyUSB backend, exact production USB descriptor bytes/strings, logging policy, and ESP-IDF compilation where recorded in the evidence index. Those checks do **not** establish any of the following physical claims:
+
+- electrical UART or RTS/CTS correctness on the selected boards;
+- successful native-USB enumeration from a real ESP32-S3;
+- automatic Windows Bluetooth-driver binding;
+- automatic Linux `btusb`/BlueZ binding;
+- real BR/EDR or BLE radio operation through the WROOM controller;
+- peripheral pairing/interoperability;
+- suspend/resume or reset recovery; or
+- sustained throughput/stability.
+
+Those items remain open until device testing resumes. See `V1_EVIDENCE_INDEX.md` for the separation between software evidence and deferred device evidence.
+
 ## SCO/eSCO synchronous voice transport
 
 **Status: intentionally not supported in V1.**
