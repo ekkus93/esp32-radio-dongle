@@ -48,8 +48,8 @@ static void test_configuration_descriptor(void) {
 
     assert(configuration[0] == 9u);
     assert(configuration[1] == TUSB_DESC_CONFIGURATION);
-    assert(read_le16(&configuration[2]) == 39u);
-    assert(configuration[4] == 1u);
+    assert(read_le16(&configuration[2]) == 48u);
+    assert(configuration[4] == 2u);
     assert(configuration[5] == 1u);
 
     const uint8_t *interface = &configuration[9];
@@ -83,6 +83,16 @@ static void test_configuration_descriptor(void) {
     assert(acl_in[2] == 0x82u);
     assert((acl_in[3] & 0x03u) == TUSB_XFER_BULK);
     assert(read_le16(&acl_in[4]) == 64u);
+
+    const uint8_t *sco_idle = &configuration[39];
+    assert(sco_idle[0] == 9u);
+    assert(sco_idle[1] == TUSB_DESC_INTERFACE);
+    assert(sco_idle[2] == 1u);
+    assert(sco_idle[3] == 0u);
+    assert(sco_idle[4] == 0u);
+    assert(sco_idle[5] == TUSB_CLASS_WIRELESS_CONTROLLER);
+    assert(sco_idle[6] == 0x01u);
+    assert(sco_idle[7] == 0x01u);
 }
 
 static void test_string_descriptors_and_stable_serial(void) {
