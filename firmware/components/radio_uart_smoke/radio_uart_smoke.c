@@ -57,9 +57,7 @@ static const uint8_t OK_FLOW_A[4] = {'O', 'K', 'A', '1'};
 static const uint8_t BAD_FLOW_A[4] = {'B', 'A', 'D', 'A'};
 static const uint8_t OK_FLOW_B[4] = {'O', 'K', 'B', '1'};
 
-static uint8_t payload_byte(size_t offset) {
-    return (uint8_t)(((offset * 37u) + 0x5au) & 0xffu);
-}
+static uint8_t payload_byte(size_t offset) { return (uint8_t)(((offset * 37u) + 0x5au) & 0xffu); }
 
 static void fill_payload(uint8_t *buffer, size_t length) {
     for (size_t i = 0; i < length; ++i) {
@@ -121,16 +119,14 @@ static esp_err_t init_uart(void) {
     ESP_RETURN_ON_ERROR(uart_driver_install(SMOKE_UART, SMOKE_UART_RX_BUFFER_SIZE,
                                             SMOKE_UART_TX_BUFFER_SIZE, 0, NULL, 0),
                         TAG, "install smoke-test UART driver");
-    ESP_RETURN_ON_ERROR(uart_param_config(SMOKE_UART, &config), TAG,
-                        "configure smoke-test UART");
+    ESP_RETURN_ON_ERROR(uart_param_config(SMOKE_UART, &config), TAG, "configure smoke-test UART");
     ESP_RETURN_ON_ERROR(
         uart_set_pin(SMOKE_UART, SMOKE_TX_GPIO, SMOKE_RX_GPIO, SMOKE_RTS_GPIO, SMOKE_CTS_GPIO), TAG,
         "route smoke-test UART pins");
     ESP_RETURN_ON_ERROR(uart_flush_input(SMOKE_UART), TAG, "flush smoke-test UART input");
 
-    ESP_LOGI(TAG, "%s: UART=%d baud=%d TX=%d RX=%d RTS=%d CTS=%d", SMOKE_ROLE_NAME,
-             (int)SMOKE_UART, RADIO_HCI_UART_BAUD, SMOKE_TX_GPIO, SMOKE_RX_GPIO, SMOKE_RTS_GPIO,
-             SMOKE_CTS_GPIO);
+    ESP_LOGI(TAG, "%s: UART=%d baud=%d TX=%d RX=%d RTS=%d CTS=%d", SMOKE_ROLE_NAME, (int)SMOKE_UART,
+             RADIO_HCI_UART_BAUD, SMOKE_TX_GPIO, SMOKE_RX_GPIO, SMOKE_RTS_GPIO, SMOKE_CTS_GPIO);
     return ESP_OK;
 }
 
