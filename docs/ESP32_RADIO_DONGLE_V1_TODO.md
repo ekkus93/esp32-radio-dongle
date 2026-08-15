@@ -15,7 +15,7 @@ Do not mark hardware or host acceptance complete from source code or CI alone.
 
 ## Current evidence checkpoint
 
-Software-only checkpoint as of 2026-08-15:
+Software/documentation checkpoint as of 2026-08-15:
 
 - ESP-IDF is pinned to **v5.5.5** for both targets.
 - GitHub Actions run **31873127842**, commit `57864e9e83b5760c70fbff2e3b5f1ab1cfbe174e`, passed:
@@ -27,9 +27,10 @@ Software-only checkpoint as of 2026-08-15:
   - clean ESP32-S3 production firmware build;
   - both dedicated UART smoke-image builds; and
   - both WARN-only production release-profile builds with commit-addressed flash-input artifacts.
-- The USB Bluetooth descriptor implementation uses the corrected two-interface legacy Controller layout documented in `docs/V1_USB_COMPLIANCE_CORRECTION.md`.
+- The USB Bluetooth descriptor implementation uses the two-interface legacy Controller layout documented directly in the current SPEC and `docs/USB_BLUETOOTH_V1.md`.
 - Static security/failure-semantics and release-configuration evidence is indexed in `docs/V1_EVIDENCE_INDEX.md`.
 - V1-102 board selection is verified in `docs/V1_BOARD_VERIFICATION.md` from the project-owner purchase listings, prior board photographs/USB enumeration, and Espressif pin/native-USB documentation.
+- The software portion of V1-1305 is audited in `docs/V1_DOCUMENTATION_EVIDENCE_AUDIT.md` and guarded by `scripts/check-doc-contract.sh` / Documentation CI.
 - Hardware wiring/electrical tests and Windows/Linux driverless acceptance have **not** yet been performed and remain open.
 
 ---
@@ -234,7 +235,7 @@ Software-only checkpoint as of 2026-08-15:
   - [x] disconnected/recovering state.
   - [ ] Verify clean recovery after real host USB reset/suspend/resume/replug.
 
-**Gate V1-G40: OPEN — descriptor source compiles; physical USB enumeration is still required.**
+**Gate V1-G40: OPEN — descriptor/class source and host tests pass; physical USB enumeration is still required.**
 
 ---
 
@@ -264,7 +265,7 @@ Software-only checkpoint as of 2026-08-15:
   - [x] Evaluate the pinned TinyUSB/controller combination.
   - [x] Record that the pinned stock TinyUSB BTH voice/ISO path is not suitable for reliable V1 end-to-end SCO forwarding.
   - [x] Disable synchronous BR/EDR connections on WROOM.
-  - [x] Expose no fake/broken USB voice endpoints.
+  - [x] Expose only the zero-endpoint interface 1 alt 0 required for zero voice bandwidth; no usable SCO endpoints.
   - [x] Document HFP/HSP voice as out of V1 scope while retaining Classic ACL profiles.
 
 - [ ] **V1-506 — Implement bridge readiness sequencing**
@@ -394,7 +395,8 @@ Software-only checkpoint as of 2026-08-15:
 
 - [ ] **V1-904 — Logging load audit**
   - [ ] Verify debug logging cannot starve USB/UART under hardware traffic.
-  - [ ] Reduce/rate-limit timing-sensitive logs for release as necessary.
+  - [x] Release configuration statically removes INFO/DEBUG/VERBOSE logging above WARN maximum/default and prohibits raw buffer/hex dumps in production trees.
+  - [ ] Reduce/rate-limit additional timing-sensitive logs if physical testing proves necessary.
 
 **Gate V1-G90: OPEN — real sustained traffic required.**
 
@@ -461,7 +463,7 @@ Software-only checkpoint as of 2026-08-15:
   - [x] Both firmware targets and final S3 native-USB connector explained.
 
 - [x] **V1-1203 — Write wiring guide** — `docs/HARDWARE.md`
-  - [x] Pin table/diagram, common-ground requirement, separate-regulator warning.
+  - [x] Selected boards, pin table/diagram, common-ground requirement, separate-regulator warning.
 
 - [x] **V1-1204 — Write normal-use guide** — `docs/USAGE.md`
   - [x] Windows/Linux normal Bluetooth paths and zero project-specific host setup requirement documented.
@@ -471,11 +473,12 @@ Software-only checkpoint as of 2026-08-15:
 
 - [ ] **V1-1206 — Record known limitations** — `docs/LIMITATIONS.md`
   - [x] SCO/eSCO status recorded.
+  - [x] Selected development-board status corrected and linked to V1-102 evidence.
   - [ ] Tested host OS versions/builds still require hardware acceptance.
   - [ ] Tested Bluetooth peripherals still require hardware acceptance.
   - [ ] Throughput/stability observations still require hardware acceptance.
 
-**Gate V1-G120: OPEN — documentation exists; physical build/flash/use walk-through must still validate it.**
+**Gate V1-G120: OPEN — documentation exists and has a software audit; physical build/flash/use walk-through must still validate it.**
 
 ---
 
@@ -484,7 +487,8 @@ Software-only checkpoint as of 2026-08-15:
 - [ ] **V1-1301 — Reproduce both firmware builds from clean checkout**
   - [x] Clean WROOM build passes in CI.
   - [x] Clean S3 build passes in CI.
-  - [ ] Final release artifact names/hashes/flash inputs remain to be captured.
+  - [x] Release pipeline produces commit-addressed artifact names/hashes/flash inputs as development evidence.
+  - [ ] Final artifacts must be captured again from the exact hardware-qualified release commit.
 
 - [ ] **V1-1302 — Clean Linux acceptance run**
   - [ ] Standard USB Bluetooth driver/BlueZ, BLE, Classic, HID, sustained traffic, replug/reboot all pass without project host software.
@@ -495,14 +499,19 @@ Software-only checkpoint as of 2026-08-15:
 - [x] **V1-1304 — Verify V1 non-goals have not leaked into requirements**
   - [x] No Wi-Fi implementation required for V1.
   - [x] No RTL8188EU emulation required for V1.
-  - [x] No custom host driver required.
+  - [x] No custom host Bluetooth driver required.
   - [x] No host helper/daemon required for ordinary Bluetooth operation.
+  - [x] Bring-up smoke firmware is explicitly development-only and excluded from production component discovery.
 
-- [ ] **V1-1305 — Documentation/evidence audit**
-  - [ ] All completed gates have final evidence recorded.
-  - [x] Current known limitations are documented.
-  - [ ] Spec/TODO must be re-audited against hardware-tested behavior.
-  - [ ] No open blocker may be hidden by a development-only workaround.
+- [ ] **V1-1305 — Documentation/evidence audit** — `docs/V1_DOCUMENTATION_EVIDENCE_AUDIT.md`
+  - [x] All completed software gates/tasks have traceable implementation/test/CI/documentation evidence recorded or indexed.
+  - [x] SPEC/TODO have been re-audited against the current software implementation and reconciled for locked SDK, board, USB, SCO, release, and non-goal decisions.
+  - [x] Known limitations accurately distinguish selected-board completion from deferred physical validation.
+  - [x] No known open V1 blocker is hidden by a development-only host path, diagnostic firmware, or component dependency.
+  - [x] Add a lightweight Documentation CI contract check to prevent the stale normative states found by this audit from returning.
+  - [ ] Re-audit SPEC/TODO/limitations against **actual hardware-tested behavior** after device testing resumes.
+
+**V1-1305 software audit: PASS; parent remains OPEN only for the post-device-test behavior audit.**
 
 - [ ] **V1-1306 — Declare V1 complete**
   - [ ] Mandatory tasks complete/superseded by documented spec change.
@@ -510,7 +519,7 @@ Software-only checkpoint as of 2026-08-15:
   - [ ] Windows acceptance passes.
   - [ ] V1 release notes written.
 
-**Gate V1-FINAL: OPEN.** Final acceptance remains: flash both firmwares, connect the documented hardware, plug the S3 native USB port into Windows or Linux, and use Bluetooth Classic + BLE through the OS normal Bluetooth stack without ESP32 Radio Dongle host software.
+**Gate V1-FINAL: OPEN.** Final acceptance remains: flash both production firmwares, connect the documented hardware, plug the S3 native USB port into Windows or Linux, and use Bluetooth Classic + BLE through the OS normal Bluetooth stack without ESP32 Radio Dongle host software.
 
 ---
 
