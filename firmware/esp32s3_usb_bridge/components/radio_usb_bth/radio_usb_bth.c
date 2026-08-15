@@ -234,13 +234,18 @@ static uint16_t class_open(uint8_t rhport, const tusb_desc_interface_t *interfac
 }
 
 static bool command_request_matches(const tusb_control_request_t *request) {
-    if (request->bmRequestType_bit.type != TUSB_REQ_TYPE_CLASS || request->bRequest != 0u ||
-        request->wValue != 0u) {
+    if (request->bmRequestType_bit.direction != TUSB_DIR_OUT ||
+        request->bmRequestType_bit.type != TUSB_REQ_TYPE_CLASS) {
         return false;
     }
 
+    /* Bluetooth USB HCI historically accepts any host-to-device class request
+     * addressed to the Controller as an HCI command, even if bRequest, wValue,
+     * or (for a device-targeted request) wIndex differ from the recommended
+     * 0x00 values. Keep interface-targeted routing strict so this remains safe
+     * if the device later becomes composite. */
     if (request->bmRequestType_bit.recipient == TUSB_REQ_RCPT_DEVICE) {
-        return request->wIndex == 0u;
+        return true;
     }
     if (request->bmRequestType_bit.recipient == TUSB_REQ_RCPT_INTERFACE) {
         return request->wIndex == s_state.interface_number;
