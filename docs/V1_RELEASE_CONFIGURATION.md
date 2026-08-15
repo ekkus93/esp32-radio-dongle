@@ -11,6 +11,8 @@ Only these two projects are V1 production/release firmware:
 
 The projects under `firmware/bringup/` are development-only diagnostic images. They are never V1 release artifacts and must not be substituted for either production image during final acceptance.
 
+Production CMake files explicitly import only `firmware/components/radio_h4`; they do not broadly import the bring-up-only `radio_uart_smoke` component. `scripts/check-component-boundaries.sh` enforces that separation in CI.
+
 ## ESP-IDF baseline
 
 Release builds use ESP-IDF **v5.5.5**, the same pinned SDK used by development CI.
@@ -50,17 +52,16 @@ Removing `sdkconfig` before the release build is intentional: `sdkconfig.default
 
 ## Release logging policy
 
-The release overlay sets:
+The release overlay selects the authoritative ESP-IDF Kconfig choices:
 
 ```text
 CONFIG_LOG_DEFAULT_LEVEL_WARN=y
-CONFIG_LOG_DEFAULT_LEVEL=2
 CONFIG_LOG_MAXIMUM_EQUALS_DEFAULT=y
-CONFIG_LOG_MAXIMUM_LEVEL=2
 # CONFIG_LOG_COLORS is not set
 CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
-CONFIG_BOOTLOADER_LOG_LEVEL=2
 ```
+
+ESP-IDF derives the numeric application default from `LOG_DEFAULT_LEVEL_WARN`. Selecting `LOG_MAXIMUM_EQUALS_DEFAULT` makes the maximum compiled/runtime-selectable level follow that default rather than maintaining a separate hand-written numeric setting. The bootloader WARN choice similarly determines its numeric verbosity internally.
 
 Consequences:
 
@@ -70,7 +71,7 @@ Consequences:
 - Bootloader output is reduced to warnings/errors.
 - ANSI log colors are disabled.
 
-The release build does **not** rely only on a runtime log-level call. The maximum compiled level is also WARN.
+The release build does **not** rely only on a runtime log-level call. The maximum level is constrained by the Kconfig `LOG_MAXIMUM_EQUALS_DEFAULT` choice.
 
 ## Security/log-content audit
 
@@ -107,6 +108,7 @@ Development-only assets include:
 
 - `firmware/bringup/esp32_wroom_uart_smoke/`
 - `firmware/bringup/esp32s3_uart_smoke/`
+- `firmware/components/radio_uart_smoke/`
 - `docs/V1_UART_BRINGUP.md`
 - `docs/V1_UART_BRINGUP_EVIDENCE.md`
 
@@ -114,7 +116,7 @@ None of those create a host-side dependency for normal V1 Bluetooth use. They ar
 
 ## CI release artifacts
 
-`.github/workflows/firmware-ci.yml` builds both production targets with the release overlay in dedicated release jobs. The job verifies the generated `sdkconfig` contains the required release settings.
+`.github/workflows/firmware-ci.yml` builds both production targets with the release overlay in dedicated release jobs. The job verifies the generated `sdkconfig` contains the required authoritative release choice symbols.
 
 For every successful release-profile build, CI generates `build/SHA256SUMS.txt` covering all `.bin` flash images and uploads a commit-addressed artifact:
 
@@ -150,9 +152,9 @@ Software-side release configuration is complete when all of the following are tr
 
 - both `sdkconfig.release` files exist;
 - CI builds both release profiles;
-- CI verifies WARN-only maximum/default logging;
+- CI verifies WARN-only default/maximum logging through the authoritative Kconfig choices;
 - the release logging policy check passes;
 - production logs contain no known pairing/key/payload dumps; and
-- development-only bring-up images are excluded from release artifacts.
+- development-only bring-up images are excluded from production component discovery and release artifacts.
 
 Hardware timing impact of logging under sustained Bluetooth traffic remains part of V1-904 and is intentionally deferred until device testing resumes.
