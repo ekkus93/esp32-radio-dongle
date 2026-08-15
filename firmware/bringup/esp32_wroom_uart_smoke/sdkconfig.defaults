@@ -1,0 +1,2 @@
+# ESP32 Radio Dongle V1 UART/RTS/CTS bring-up image.
+CONFIG_IDF_TARGET="esp32"
