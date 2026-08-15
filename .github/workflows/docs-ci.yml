@@ -1,0 +1,31 @@
+name: Documentation CI
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - README.md
+      - docs/**
+      - scripts/check-doc-contract.sh
+      - .github/workflows/docs-ci.yml
+  pull_request:
+    paths:
+      - README.md
+      - docs/**
+      - scripts/check-doc-contract.sh
+      - .github/workflows/docs-ci.yml
+
+permissions:
+  contents: read
+
+jobs:
+  v1-doc-contract:
+    name: V1 documentation contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Check V1 documentation contract
+        run: bash scripts/check-doc-contract.sh
