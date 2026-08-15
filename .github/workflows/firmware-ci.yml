@@ -75,6 +75,18 @@ jobs:
       - name: Run USB Bluetooth class host tests
         run: /tmp/test_radio_usb_bth
 
+      - name: Build Bluetooth USB legacy control compatibility tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic \
+            -Itests/host/stubs \
+            -Ifirmware/esp32s3_usb_bridge/components/radio_usb_bth/include \
+            firmware/esp32s3_usb_bridge/components/radio_usb_bth/radio_usb_bth.c \
+            tests/host/test_radio_usb_bth_control_compat.c \
+            -o /tmp/test_radio_usb_bth_control_compat
+
+      - name: Run Bluetooth USB legacy control compatibility tests
+        run: /tmp/test_radio_usb_bth_control_compat
+
       - name: Build USB descriptor host tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic \
