@@ -4,15 +4,19 @@ Use this file to record the first physical ESP32-S3 <-> ESP32-WROOM-32 UART/RTS/
 
 Do not mark a field PASS without observed hardware evidence.
 
+V1-102 board selection is already complete; the known board identities are prefilled below so the physical bring-up does not repeat that task.
+
 ## Hardware identity
 
 - Test date:
-- ESP32-S3 board model:
-- ESP32-S3 module marking:
-- ESP32-S3 board revision:
-- ESP32-WROOM-32 board model:
-- ESP32-WROOM module marking:
-- ESP32-WROOM board revision:
+- ESP32-S3 board model: AYWHP ESP32-S3-DevKitC-1-N16R8 (ASIN `B0DG8L5NG5`)
+- ESP32-S3 module marking: record from the tested unit if desired for evidence completeness
+- ESP32-S3 board revision: record from the tested unit if printed
+- ESP32-WROOM-32 board model: Aideepen 30-pin ESP-WROOM-32 (ASIN `B0BQJ8BTVB`)
+- ESP32-WROOM module marking: record from the tested unit if desired for evidence completeness
+- ESP32-WROOM board revision: record from the tested unit if printed
+
+Board-selection evidence: `docs/V1_BOARD_VERIFICATION.md`.
 
 ## Power and wiring
 
