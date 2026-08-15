@@ -1,6 +1,6 @@
 # V1 Security, Identity, and Failure-Semantics Review
 
-This review records software-only evidence for V1-1101 through V1-1103. Hardware and release-configuration evidence remains separate.
+This review records software evidence for V1-1101 through V1-1103 and links the completed V1-1104 release-configuration review. Physical interoperability/timing and production USB identity authorization remain separate acceptance/release concerns.
 
 ## USB identity review
 
@@ -14,7 +14,7 @@ Current development policy:
 - serial number: 12 uppercase hexadecimal digits derived from the ESP32-S3 factory base MAC; and
 - production/distributed builds must use a VID/PID the project is authorized to use.
 
-The placeholder development identity is not a claim to another manufacturer's identity and is not approved as a production VID/PID by this project.
+The placeholder development identity is not production USB identity authorization.
 
 ## H4 input bounds
 
@@ -23,7 +23,7 @@ The shared H4 implementation in `firmware/components/radio_h4/` has explicit per
 Validation properties:
 
 - the H4 packet type is validated before type-specific header interpretation;
-- command, event, ACL, and SCO lengths are parsed only after the complete type-specific header is present;
+- command, event, ACL, and SCO model lengths are parsed only after the complete type-specific header is present;
 - impossible/unsupported packet types fail closed;
 - declared payloads above the configured limit fail closed;
 - complete-packet validation rejects trailing bytes and truncation;
@@ -32,13 +32,13 @@ Validation properties:
 
 `tests/host/test_radio_h4.c` exercises valid command/event/ACL/SCO model packets, fragmentation, back-to-back delivery, invalid types, oversized ACL length, truncation, trailing bytes, and queue exhaustion.
 
-CI compiles this host test with `-Wall -Wextra -Werror -pedantic` and executes it on every push/PR.
+CI compiles this host test with `-Wall -Wextra -Werror -pedantic` and executes it on firmware/test workflow runs.
 
 ## Queue bounds
 
-The shared queue model has a fixed compile-time capacity. The actual S3 and WROOM bridges likewise use fixed-capacity FreeRTOS queues whose items are fixed-size `radio_h4_packet_t` values.
+The shared queue model has a fixed compile-time capacity. The S3 and WROOM bridges use fixed-capacity FreeRTOS queues whose items are fixed-size `radio_h4_packet_t` values.
 
-Queue exhaustion is counted and treated as a fatal bridge-integrity condition; the firmware does not intentionally discard an oldest/newest HCI packet and continue pretending framing/state is intact.
+Queue exhaustion is counted and treated as a fatal bridge-integrity condition; firmware does not intentionally discard an oldest/newest HCI packet and continue pretending framing/state is intact.
 
 The parser/queue host regression covers queue fill, full rejection, high-water tracking, and drain-to-empty behavior.
 
@@ -54,6 +54,16 @@ The project-owned S3 USB Bluetooth class uses statically sized buffers for:
 The class rejects control requests larger than the command buffer. ACL OUT accumulation checks both individual full-speed USB packet size and aggregate HCI ACL buffer capacity before copying. The HCI ACL header's declared length must match the completed packet before forwarding. Event and ACL IN submission validates the complete payload length before copying to the static transmit buffer.
 
 There is no allocation whose size is taken directly from a host-provided HCI/USB length.
+
+## HCI control-request compatibility and routing
+
+The project-owned class accepts legacy single-function device-targeted host-to-device class requests as HCI commands without relying on historical `bRequest`, `wValue`, or `wIndex` values.
+
+Interface-targeted command requests remain strict to the primary Bluetooth interface and recommended request/value form so a future composite expansion cannot casually route a command to the wrong interface.
+
+Device-to-host, non-class, misrouted interface, and oversized requests are rejected by the HCI command path.
+
+`tests/host/test_radio_usb_bth_control_compat.c` exercises these compatibility and rejection cases.
 
 ## Controller-originated validation
 
@@ -76,15 +86,37 @@ The current recovery policy for a fatal transport-integrity failure is whole-MCU
 
 Development diagnostics record the reason category and counters needed to distinguish malformed traffic, queue pressure, UART errors, USB lifecycle/protocol events, unexpected SCO traffic, and recovery attempts.
 
+## Release logging/content review
+
+V1-1104 is complete for software configuration and static content review. `docs/V1_RELEASE_CONFIGURATION.md` records the release policy.
+
+The production firmware was reviewed for raw/pairing-sensitive logging and currently does not intentionally emit:
+
+- HCI command/event/ACL payload dumps;
+- Bluetooth link keys;
+- PIN/passkey material;
+- LTK/IRK/CSRK values; or
+- arbitrary packet hex dumps.
+
+`scripts/check-release-logging.sh` rejects ESP-IDF buffer/hex-dump logging APIs in the production firmware trees. Release configuration compiles application/bootloader logging at WARN-or-lower policy as documented by the release review.
+
+This static review does not prove that development logging has no timing impact under real sustained Bluetooth traffic. That remains V1-904.
+
+## Development/production boundary
+
+The production projects import the shared `radio_h4` component explicitly and do not import the bring-up-only `radio_uart_smoke` component. `scripts/check-component-boundaries.sh` enforces the boundary in CI.
+
+The dedicated UART smoke images are hardware acceptance tools only and are never a substitute for the two production images.
+
 ## Items not closed by this review
 
 This software review does not prove:
 
 - electrical RTS/CTS behavior;
 - real USB enumeration or OS driver binding;
-- physical WROOM reset detection/recovery under every reset timing;
-- pairing/security behavior of real peripherals;
-- release logging volume/content; or
+- physical WROOM/S3 reset behavior under real timing;
+- pairing/security/interoperability behavior of real peripherals;
+- development-log timing impact under sustained hardware traffic; or
 - production USB identity authorization.
 
 Those remain acceptance/release tasks in `docs/ESP32_RADIO_DONGLE_V1_TODO.md`.
