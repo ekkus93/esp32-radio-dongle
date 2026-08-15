@@ -10,8 +10,9 @@
 #define RADIO_USB_BCD 0x0200u
 #define RADIO_USB_DEVICE_VERSION 0x0100u
 
-#define RADIO_USB_INTERFACE_NUMBER 0u
-#define RADIO_USB_INTERFACE_COUNT 1u
+#define RADIO_USB_PRIMARY_INTERFACE_NUMBER 0u
+#define RADIO_USB_SCO_INTERFACE_NUMBER 1u
+#define RADIO_USB_INTERFACE_COUNT 2u
 
 #define RADIO_USB_EP_EVENT_IN 0x81u
 #define RADIO_USB_EP_ACL_OUT 0x02u
@@ -21,7 +22,8 @@
 #define RADIO_USB_EVENT_INTERVAL 1u
 
 #define RADIO_USB_CONFIGURATION_TOTAL_LEN                                                          \
-    (TUD_CONFIG_DESC_LEN + sizeof(tusb_desc_interface_t) + (3u * sizeof(tusb_desc_endpoint_t)))
+    (TUD_CONFIG_DESC_LEN + (2u * sizeof(tusb_desc_interface_t)) +                                  \
+     (3u * sizeof(tusb_desc_endpoint_t)))
 
 #define RADIO_USB_MANUFACTURER_INDEX 1u
 #define RADIO_USB_PRODUCT_INDEX 2u
@@ -51,7 +53,7 @@ static const uint8_t s_full_speed_configuration[] = {
     /* Bluetooth Primary Controller interface: class E0 / subclass 01 / protocol 01. */
     9,
     TUSB_DESC_INTERFACE,
-    RADIO_USB_INTERFACE_NUMBER,
+    RADIO_USB_PRIMARY_INTERFACE_NUMBER,
     0,
     3,
     TUSB_CLASS_WIRELESS_CONTROLLER,
@@ -84,6 +86,18 @@ static const uint8_t s_full_speed_configuration[] = {
     TUSB_XFER_BULK,
     RADIO_USB_ACL_EP_SIZE,
     0,
+    0,
+
+    /* Bluetooth SCO interface, alternate setting 0: zero active voice channels.
+     * V1 intentionally exposes no isochronous endpoints or synchronous transport. */
+    9,
+    TUSB_DESC_INTERFACE,
+    RADIO_USB_SCO_INTERFACE_NUMBER,
+    0,
+    0,
+    TUSB_CLASS_WIRELESS_CONTROLLER,
+    0x01,
+    0x01,
     0,
 };
 
