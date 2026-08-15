@@ -23,7 +23,18 @@ jobs:
             find firmware tests -type f \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \) -print0
           )
           clang-format -i "${files[@]}"
-          git diff --exit-code -- firmware tests
+          if ! git diff --exit-code -- firmware tests; then
+            git diff -- firmware tests > clang-format.patch
+            exit 1
+          fi
+
+      - name: Upload clang-format patch
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: clang-format-patch
+          path: clang-format.patch
+          if-no-files-found: ignore
 
       - name: Build H4 host tests
         run: |
