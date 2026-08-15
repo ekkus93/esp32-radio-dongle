@@ -6,6 +6,8 @@ Do not mark a field PASS without observed hardware evidence.
 
 V1-102 board selection is already complete; the known board identities are prefilled below so the physical bring-up does not repeat that task.
 
+The datasheet/source electrical preflight is recorded separately in `docs/V1_ELECTRICAL_PREFLIGHT.md` and is already PASS. This file records the physical observations still needed for V1-103/V1-104.
+
 ## Hardware identity
 
 - Test date:
@@ -18,12 +20,32 @@ V1-102 board selection is already complete; the known board identities are prefi
 
 Board-selection evidence: `docs/V1_BOARD_VERIFICATION.md`.
 
-## Power and wiring
+## V1-103 power and ground evidence
 
-- [ ] Both boards independently USB-powered.
-- [ ] Common GND connected.
+- [x] Datasheet/source preflight confirms compatible nominal 3.3 V GPIO domains.
+- [x] Static pin audit confirms the HCI GPIOs do not overlap either MCU's strapping pins.
+- [x] Production/source audit confirms TX->RX and RTS->CTS directionality with no intentional output-to-output crossing.
+- [ ] Each development board uses one intended power source.
+- [ ] Common GND connected and verified.
 - [ ] No 3.3 V rails tied together.
 - [ ] No 5 V/VBUS rails tied together.
+- [ ] Both MCU boards remain normally powered while the four direct HCI GPIO signals are active.
+- [ ] Power-up method avoids deliberately driving a fully unpowered peer.
+
+Power-up method used:
+
+```text
+RECORD SAFE/COMMON POWER-UP METHOD HERE
+```
+
+Common-ground continuity/observation:
+
+```text
+RECORD GROUND OBSERVATION HERE
+```
+
+## HCI wiring
+
 - [ ] S3 GPIO4 TX -> WROOM GPIO16 RX2.
 - [ ] S3 GPIO5 RX <- WROOM GPIO17 TX2.
 - [ ] S3 GPIO6 RTS -> WROOM GPIO25 CTS.
@@ -110,6 +132,8 @@ BRINGUP PASS: TX/RX and both RTS/CTS crossings are functional
 
 ## Reset / boot behavior
 
+Keep **both boards powered** for the individual reset tests below. Use the reset/EN mechanism rather than removing power from only one board.
+
 ### WROOM resets while S3 stays powered
 
 | Cycle | Booted normally? | Notes |
@@ -130,7 +154,9 @@ BRINGUP PASS: TX/RX and both RTS/CTS crossings are functional
 | 4 | | |
 | 5 | | |
 
-### Cold-power sequence: WROOM then S3
+### Common cold-power cycles
+
+Power both boards down together and bring both boards back to normal power together using the same safe/common power method used for initial bring-up.
 
 | Cycle | Both booted normally? | Notes |
 | --- | --- | --- |
@@ -141,6 +167,7 @@ BRINGUP PASS: TX/RX and both RTS/CTS crossings are functional
 | 5 | | |
 
 - [ ] No boot-strap/pin-state conflict observed.
+- [ ] No test deliberately drove an unpowered peer through an HCI GPIO.
 - [ ] Full smoke test passes again after reset-cycle testing.
 
 ## Optional logic-analyzer evidence
@@ -152,6 +179,10 @@ BRINGUP PASS: TX/RX and both RTS/CTS crossings are functional
 ## Task disposition
 
 ### V1-103 — Verify electrical assumptions
+
+Static/datasheet preflight: **PASS** — see `docs/V1_ELECTRICAL_PREFLIGHT.md`.
+
+Physical disposition:
 
 - [ ] PASS
 
@@ -165,4 +196,4 @@ Reason/evidence summary:
 
 ## Gate V1-G10
 
-- [ ] PASS — both boards boot reliably with the reference wiring and pass bidirectional UART plus flow-control smoke tests.
+- [ ] PASS — both boards use the approved power/ground arrangement, boot reliably with the reference wiring, and pass bidirectional UART plus flow-control smoke tests.
