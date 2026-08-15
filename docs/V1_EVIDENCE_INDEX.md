@@ -90,7 +90,7 @@ Software implementation complete:
 - no fake SCO/ISO endpoints; and
 - lifecycle source handling for attach/detach/suspend/resume.
 
-Additional host-only evidence from GitHub Actions run `31872003739`:
+Host-only evidence from GitHub Actions run `31872240757`:
 
 - the actual production `radio_usb_bth.c` compiles on the host against a minimal fake TinyUSB backend with `-Wall -Wextra -Werror -pedantic`;
 - class registration and descriptor-open rejection paths are exercised;
@@ -98,12 +98,18 @@ Additional host-only evidence from GitHub Actions run `31872003739`:
 - fragmented ACL OUT reassembly is exercised;
 - incomplete, oversized, and ambiguous zero-length ACL transfers fail closed;
 - event packet validation and completion callbacks are exercised;
-- ACL IN exact-full-speed-packet transfer termination via ZLP is exercised; and
-- transfer-error/reset behavior is exercised.
+- ACL IN exact-full-speed-packet transfer termination via ZLP is exercised;
+- transfer-error/reset behavior is exercised;
+- the actual production `usb_descriptors.c` compiles and is inspected byte-for-byte by a host test;
+- device and interface identity are verified as Bluetooth Wireless Controller E0/01/01;
+- event IN, ACL OUT, and ACL IN endpoint address/type/size contracts are verified;
+- development VID/PID `CAFE:4011`, strings, and one-configuration layout are verified; and
+- deterministic factory-MAC serial formatting plus the explicit fallback serial are verified.
 
-Relevant host test:
+Relevant host tests:
 
 - `tests/host/test_radio_usb_bth.c`
+- `tests/host/test_usb_descriptors.c`
 
 Still required:
 
