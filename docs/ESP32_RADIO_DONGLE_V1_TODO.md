@@ -29,6 +29,7 @@ Software-only checkpoint as of 2026-08-15:
   - both WARN-only production release-profile builds with commit-addressed flash-input artifacts.
 - The USB Bluetooth descriptor implementation uses the corrected two-interface legacy Controller layout documented in `docs/V1_USB_COMPLIANCE_CORRECTION.md`.
 - Static security/failure-semantics and release-configuration evidence is indexed in `docs/V1_EVIDENCE_INDEX.md`.
+- V1-102 board selection is verified in `docs/V1_BOARD_VERIFICATION.md` from the project-owner purchase listings, prior board photographs/USB enumeration, and Espressif pin/native-USB documentation.
 - Hardware wiring/electrical tests and Windows/Linux driverless acceptance have **not** yet been performed and remain open.
 
 ---
@@ -72,12 +73,12 @@ Software-only checkpoint as of 2026-08-15:
   - [x] GND <-> GND.
   - [x] Document that TX/RX and RTS/CTS cross between endpoints.
 
-- [ ] **V1-102 — Verify selected development boards** — **NEXT HARDWARE BLOCKER**
-  - [ ] Identify the exact ESP32-S3 development board used for initial bring-up.
-  - [ ] Confirm GPIO4-7 are usable and not hard-conflicted by board peripherals.
-  - [ ] Confirm the board exposes the S3 native USB device connection.
-  - [ ] Identify the exact ESP32-WROOM-32 development board used for bring-up.
-  - [ ] Confirm GPIO16, GPIO17, GPIO25, and GPIO26 are accessible.
+- [x] **V1-102 — Verify selected development boards** — `docs/V1_BOARD_VERIFICATION.md`
+  - [x] Identify the exact ESP32-S3 development board used for initial bring-up: AYWHP ESP32-S3-DevKitC-1-N16R8, ASIN `B0DG8L5NG5`.
+  - [x] Confirm GPIO4-7 are usable and not hard-conflicted by board peripherals.
+  - [x] Confirm the board exposes the S3 native USB device connection; prior project USB-device enumeration also exercised that path.
+  - [x] Identify the exact ESP32-WROOM-32 development board used for bring-up: Aideepen 30-pin ESP-WROOM-32, ASIN `B0BQJ8BTVB`.
+  - [x] Confirm GPIO16, GPIO17, GPIO25, and GPIO26 are accessible.
 
 - [ ] **V1-103 — Verify electrical assumptions**
   - [x] Confirm both MCU GPIO domains use 3.3 V logic in the reference design.
@@ -91,7 +92,7 @@ Software-only checkpoint as of 2026-08-15:
   - [ ] Test RTS/CTS assertion and deassertion.
   - [ ] Verify no boot-strap/pin-state conflict during reset.
 
-**Gate V1-G10: OPEN — requires physical boards and wiring.**
+**Gate V1-G10: OPEN — selected boards are verified; physical common-ground, UART, RTS/CTS, and reset-state testing remain deferred.**
 
 ---
 
