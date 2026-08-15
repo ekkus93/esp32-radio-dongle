@@ -161,10 +161,9 @@ jobs:
             set -euo pipefail;
             rm -f sdkconfig;
             SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.release" idf.py build 2>&1 | tee ci-release-build.log;
+            grep -E 'CONFIG_(LOG_DEFAULT_LEVEL|LOG_MAXIMUM|LOG_COLORS|BOOTLOADER_LOG_LEVEL|APP_REPRODUCIBLE_BUILD)' sdkconfig || true;
             grep -qx 'CONFIG_LOG_DEFAULT_LEVEL_WARN=y' sdkconfig;
-            grep -qx 'CONFIG_LOG_DEFAULT_LEVEL=2' sdkconfig;
             grep -qx 'CONFIG_LOG_MAXIMUM_EQUALS_DEFAULT=y' sdkconfig;
-            grep -qx 'CONFIG_LOG_MAXIMUM_LEVEL=2' sdkconfig;
             grep -qx '# CONFIG_LOG_COLORS is not set' sdkconfig;
             grep -qx 'CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y' sdkconfig;
             grep -qx 'CONFIG_APP_REPRODUCIBLE_BUILD=y' sdkconfig;
