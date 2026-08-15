@@ -90,6 +90,21 @@ Software implementation complete:
 - no fake SCO/ISO endpoints; and
 - lifecycle source handling for attach/detach/suspend/resume.
 
+Additional host-only evidence from GitHub Actions run `31872003739`:
+
+- the actual production `radio_usb_bth.c` compiles on the host against a minimal fake TinyUSB backend with `-Wall -Wextra -Werror -pedantic`;
+- class registration and descriptor-open rejection paths are exercised;
+- HCI command class-control transfers are exercised;
+- fragmented ACL OUT reassembly is exercised;
+- incomplete, oversized, and ambiguous zero-length ACL transfers fail closed;
+- event packet validation and completion callbacks are exercised;
+- ACL IN exact-full-speed-packet transfer termination via ZLP is exercised; and
+- transfer-error/reset behavior is exercised.
+
+Relevant host test:
+
+- `tests/host/test_radio_usb_bth.c`
+
 Still required:
 
 - physical USB descriptor capture;
