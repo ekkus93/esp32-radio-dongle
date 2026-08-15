@@ -45,9 +45,19 @@ Relevant test:
 
 ### V1-G10 — Hardware contract and UART bring-up
 
+Board-selection evidence is complete:
+
+- V1-102 is PASS in `docs/V1_BOARD_VERIFICATION.md`.
+- Selected S3: AYWHP ESP32-S3-DevKitC-1-N16R8, ASIN `B0DG8L5NG5`.
+- Selected WROOM: Aideepen 30-pin ESP-WROOM-32, ASIN `B0BQJ8BTVB`.
+- Prior project-owner board photographs and Linux USB enumeration were used as physical identity evidence.
+- The S3 previously enumerated project USB firmware as `303a:4001`.
+- The WROOM board previously enumerated its CP210x USB-UART bridge as `10c4:ea60`.
+- Espressif documentation verifies the selected S3 board family exposes GPIO4-7 and native USB, and the WROOM/module layout supports the required GPIO16/17/25/26 signals.
+
 Software preparation complete:
 
-- board compatibility guide: `docs/V1_BOARD_VERIFICATION.md`;
+- board compatibility/selection record: `docs/V1_BOARD_VERIFICATION.md`;
 - dedicated WROOM smoke firmware: `firmware/bringup/esp32_wroom_uart_smoke/`;
 - dedicated S3 smoke firmware: `firmware/bringup/esp32s3_uart_smoke/`;
 - shared bidirectional UART/RTS-CTS test logic: `firmware/components/radio_uart_smoke/`;
@@ -56,8 +66,8 @@ Software preparation complete:
 
 Still required when device testing resumes:
 
-- exact physical board identities;
 - five-wire connection/power evidence;
+- physical common-ground verification;
 - bidirectional UART pass;
 - both RTS/CTS crossings under measured backpressure; and
 - reset/boot-state checks.
