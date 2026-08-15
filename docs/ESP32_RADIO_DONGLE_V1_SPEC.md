@@ -1,5 +1,7 @@
 # ESP32 Radio Dongle V1 Specification
 
+Status: current V1 implementation and acceptance contract.
+
 ## 1. Purpose
 
 ESP32 Radio Dongle V1 is a dual-MCU USB Bluetooth adapter built from:
@@ -11,9 +13,9 @@ The defining V1 product requirement is:
 
 > After both firmware images are flashed and the hardware is connected, plugging the ESP32-S3 native USB port into a normal Windows or Linux computer must make the device appear as an ordinary USB Bluetooth adapter without installing project-specific host software, drivers, daemons, scripts, or helper applications.
 
-Windows and Linux must use their normal built-in Bluetooth stacks and USB Bluetooth support.
+Windows and Linux must use their normal Bluetooth stacks and USB Bluetooth support.
 
-Wi-Fi functionality is explicitly deferred to V2.
+Wi-Fi is explicitly deferred to V2.
 
 ---
 
@@ -22,18 +24,19 @@ Wi-Fi functionality is explicitly deferred to V2.
 V1 SHALL:
 
 1. Provide Bluetooth Classic (BR/EDR) and BLE through the ESP32-WROOM-32 radio.
-2. Present a standards-compliant USB Bluetooth HCI interface through the ESP32-S3 native USB peripheral.
-3. Work with the normal Windows Bluetooth stack without a project-specific Windows driver.
-4. Work with the normal Linux Bluetooth stack (`btusb`/BlueZ) without a project-specific Linux driver or serial-HCI attach utility.
+2. Present a standards-oriented USB Bluetooth HCI Primary Controller interface through the ESP32-S3 native USB peripheral.
+3. Work with the normal Windows Bluetooth stack without a project-specific Windows Bluetooth driver or INF.
+4. Work with the normal Linux USB Bluetooth/BlueZ stack without a project-specific Linux driver or serial-HCI attach utility.
 5. Use a direct HCI transport between the two MCUs rather than running Bluetooth profiles on the ESP32-S3.
 6. Use UART H4 with hardware RTS/CTS flow control between the ESP32-S3 and ESP32-WROOM-32.
-7. Keep the ESP32-WROOM-32 UART0 path available for development flashing/logging.
-8. Recover cleanly from USB disconnect/reconnect, host reboot, controller reset, and transient transport failure.
-9. Keep the architecture compatible with a later V2 that adds Wi-Fi through the ESP32-S3 without redesigning the V1 inter-MCU link.
+7. Keep the ESP32-WROOM-32 UART0/USB-UART path available for development flashing/logging.
+8. Recover cleanly from USB disconnect/reconnect, host reboot, controller reset, and transport-integrity failure.
+9. Use bounded transport buffers and fail closed rather than forwarding ambiguous or corrupt HCI traffic.
+10. Keep the architecture compatible with a later V2 that adds ESP32-S3 Wi-Fi without redesigning the V1 inter-MCU HCI link.
 
 ---
 
-## 3. V1 Non-Goals
+## 3. V1 Non-Goals and Explicit Limits
 
 V1 SHALL NOT require or implement:
 
@@ -47,8 +50,12 @@ V1 SHALL NOT require or implement:
 - A custom PCB as a prerequisite for functional acceptance.
 - Maximum possible UART or USB throughput optimization before correctness and stability.
 - Bluetooth profiles implemented on the ESP32-S3.
+- SCO/eSCO synchronous voice transport.
+- HFP/HSP voice-audio acceptance.
 
-V1 may include development-only diagnostics, scripts, test tools, and logging. Those tools must not be required for normal end-user Bluetooth operation.
+V1 may include development-only diagnostics, scripts, test tools, logging, and dedicated bring-up firmware. Those assets must not be required for normal end-user Bluetooth operation.
+
+Bluetooth Classic remains a V1 requirement despite the SCO/eSCO limitation. ACL-based Classic workloads such as HID and A2DP remain in scope.
 
 ---
 
@@ -82,7 +89,7 @@ V1 may include development-only diagnostics, scripts, test tools, and logging. T
 
 ### 4.1 Host responsibility
 
-The Windows or Linux host owns the Bluetooth host stack and profiles. Examples include pairing, HID, A2DP, GATT, and other host-side profile behavior.
+The Windows or Linux host owns the Bluetooth host stack, pairing policy, and profiles. Examples include HID, A2DP, GATT, and other host-side profile behavior.
 
 ### 4.2 ESP32-S3 responsibility
 
@@ -90,11 +97,13 @@ The ESP32-S3 owns:
 
 - native USB enumeration;
 - USB Bluetooth HCI transport;
-- HCI packet forwarding;
+- HCI packet adaptation/forwarding;
 - UART flow control and buffering;
-- controller supervision/recovery;
-- bridge diagnostics; and
-- future V2 USB composite expansion.
+- controller readiness supervision;
+- bridge diagnostics and fail-closed recovery; and
+- future V2 USB expansion subject to preserving V1 behavior.
+
+The S3 SHALL NOT terminate normal Bluetooth profile semantics.
 
 ### 4.3 ESP32-WROOM-32 responsibility
 
@@ -106,47 +115,50 @@ The ESP32-WROOM-32 owns:
 - standard HCI controller behavior; and
 - HCI H4 transport to the ESP32-S3.
 
-The WROOM-32 SHALL NOT require the ESP32-S3 to interpret normal Bluetooth profile semantics.
+The WROOM SHALL run controller-oriented firmware rather than application-level Bluetooth profiles for V1.
 
 ---
 
-## 5. Hardware
+## 5. Hardware Contract
 
-### 5.1 V1 prototype hardware
+### 5.1 Selected V1 development boards
 
-Minimum development hardware:
+The initial V1 bring-up boards are verified in `docs/V1_BOARD_VERIFICATION.md`:
 
-- 1 x ESP32-S3 development board exposing the chip's native USB device connection.
-- 1 x ESP32-WROOM-32 development board.
-- Jumper wires for HCI UART and common ground.
-- USB cable for the ESP32-S3 native USB connection.
-- A second USB cable may be used during development to flash/debug the WROOM-32.
+- ESP32-S3: AYWHP ESP32-S3-DevKitC-1-N16R8, purchase ASIN `B0DG8L5NG5`.
+- Original ESP32: Aideepen 30-pin ESP-WROOM-32 development board, purchase ASIN `B0BQJ8BTVB`.
 
-### 5.2 Provisional final pin assignment
+The S3 selection exposes GPIO4-7 and a native USB device path. The WROOM selection exposes GPIO16/17/25/26 and uses its CP210x USB-UART path only for development flashing/logging.
 
-This pin assignment is considered the V1 reference assignment unless changed deliberately later:
+Substituting a different board requires rechecking board-specific pin/native-USB conflicts before physical testing.
+
+### 5.2 V1 reference interconnect
+
+This pin assignment is the V1 reference assignment unless deliberately revised:
 
 | Signal | ESP32-S3 | Direction | ESP32-WROOM-32 |
-|---|---:|:---:|---:|
-| HCI TX | GPIO4 | -> | GPIO16 / RX2 |
-| HCI RX | GPIO5 | <- | GPIO17 / TX2 |
-| HCI RTS | GPIO6 | -> | GPIO25 / CTS |
-| HCI CTS | GPIO7 | <- | GPIO26 / RTS |
+| --- | ---: | :---: | ---: |
+| HCI TX | GPIO4 | -> | GPIO16 / UART2 RX |
+| HCI RX | GPIO5 | <- | GPIO17 / UART2 TX |
+| HCI RTS | GPIO6 | -> | GPIO25 / UART2 CTS |
+| HCI CTS | GPIO7 | <- | GPIO26 / UART2 RTS |
 | Ground | GND | <-> | GND |
 
 TX/RX and RTS/CTS are crossed between endpoints.
 
 ### 5.3 Electrical requirements
 
-- Both MCUs use 3.3 V logic; no level shifter is expected for the UART signals.
-- During prototype development, the two dev boards may be independently USB-powered while sharing ground.
-- The 3.3 V regulator outputs of two independently powered development boards SHALL NOT be tied together unless the particular hardware design explicitly supports it.
+- Both MCU GPIO domains are 3.3 V for the selected prototype boards.
+- During prototype development, the two boards may be independently USB-powered while sharing ground.
+- Independently regulated 3.3 V outputs SHALL NOT be tied together.
+- The reference prototype connects only TX, RX, RTS, CTS, and common ground between boards unless a later hardware revision explicitly adds another signal.
 - A future integrated PCB should use one appropriately sized power tree from the USB input.
-- The final hardware design must account for simultaneous 2.4 GHz activity if V2 Wi-Fi is later enabled.
 
 ### 5.4 USB connector requirement
 
-The host-facing connector must be wired to the **ESP32-S3 native USB peripheral**, not merely to a USB-to-UART bridge.
+The host-facing connector must reach the **ESP32-S3 native USB peripheral**, not merely a USB-to-UART bridge.
+
+The WROOM USB-UART connector is never the normal V1 Bluetooth host path.
 
 ---
 
@@ -156,48 +168,53 @@ The host-facing connector must be wired to the **ESP32-S3 native USB peripheral*
 
 The inter-MCU transport SHALL use Bluetooth HCI UART Transport Layer H4 framing.
 
-The bridge SHALL preserve HCI packet boundaries and packet types, including at minimum:
+The shared parser/model recognizes the normal H4 packet types needed for validation, including Command, Event, ACL, and SCO model packets. The active V1 production forwarding contract is:
 
-- HCI Command packets;
-- HCI Event packets;
-- ACL data packets; and
-- SCO/eSCO data packets where supported by the selected controller/USB transport implementation.
+- HCI Command packets: S3 -> WROOM.
+- HCI Event packets: WROOM -> S3.
+- ACL packets: bidirectional.
+- SCO packets: recognized as a packet type but **rejected as unexpected in the V1 no-SCO configuration**.
+
+V1 SHALL NOT expose a working-looking but unserviceable SCO/eSCO transport path.
 
 ### 6.2 UART configuration
 
 - Hardware UART SHALL be used on both processors.
 - RTS/CTS hardware flow control SHALL be enabled for the production V1 data path.
-- The UART baud rate SHALL be configurable at build time and/or by a single shared configuration definition.
-- Initial bring-up may use a conservative baud rate.
-- The final V1 baud rate SHALL be selected only after sustained bidirectional stress testing.
+- The UART baud rate SHALL come from one shared configuration definition so S3/WROOM source settings cannot intentionally diverge.
+- The software baseline is 115200 baud.
+- The final V1 baud rate SHALL be selected only after physical backpressure and sustained bidirectional stress testing.
 - Firmware SHALL NOT silently continue with mismatched transport settings.
 
-### 6.3 Buffering
+### 6.3 Buffering and framing
 
-The bridge SHALL use bounded buffers.
+The bridge SHALL use bounded buffers and finite packet limits.
 
 Requirements:
 
 - No unbounded allocation in the steady-state HCI forwarding path.
-- USB-to-UART and UART-to-USB paths must have independent buffering.
-- Flow control/backpressure must be applied before buffer exhaustion.
-- Buffer exhaustion must be observable through diagnostics and must not corrupt packet framing.
+- USB-to-UART and UART-to-USB paths have independent buffering.
+- Flow control/backpressure must be applied before physical receive exhaustion.
+- Queue exhaustion must be observable and treated as a transport-integrity failure rather than silent packet loss.
 - HCI packets must never be partially discarded and then passed onward as if valid.
+- Invalid packet type, impossible length, truncation, or framing corruption must fail closed.
 
-### 6.4 Synchronization and startup
+### 6.4 Startup synchronization
 
-The ESP32-S3 SHALL not advertise the Bluetooth controller as operational until the WROOM-32 controller path has reached the required initialization state.
+The ESP32-S3 SHALL not intentionally expose normal USB Bluetooth service until the WROOM controller path has proved responsive.
 
-The startup sequence SHALL have explicit states, for example:
+The implemented startup contract is:
 
 1. S3 boot.
-2. UART initialization.
-3. WROOM controller availability/reset handling.
-4. HCI transport ready.
-5. USB Bluetooth interface ready.
-6. Normal forwarding.
+2. H4 UART/RTS-CTS initialization.
+3. HCI Reset sent to the WROOM.
+4. Successful Command Complete required.
+5. HCI Read Local Version Information sent.
+6. Successful version response required.
+7. Normal bridge tasks start.
+8. Native USB Bluetooth service is installed/attached.
 
-Exact implementation may vary, but readiness must be deterministic and diagnosable.
+If the WROOM probe fails, the S3 SHALL NOT fabricate successful HCI responses merely to make the host enumerate a nominal controller.
 
 ---
 
@@ -205,101 +222,135 @@ Exact implementation may vary, but readiness must be deterministic and diagnosab
 
 ### 7.1 Role
 
-The WROOM firmware SHALL run the ESP32 Bluetooth subsystem in controller-oriented mode suitable for an external host stack.
+The WROOM firmware SHALL run the original ESP32 Bluetooth subsystem as a dual-mode BR/EDR + BLE controller suitable for an external host stack.
 
-### 7.2 Required capabilities
+### 7.2 Required implementation
 
-The firmware SHALL:
+The production WROOM firmware SHALL:
 
-- initialize dual-mode Bluetooth support for BR/EDR and BLE;
-- expose the controller through the HCI transport used by the S3;
-- use the reference UART pins in Section 5.2;
-- enable UART hardware flow control;
-- keep UART0 available for development logging/flashing where practical;
-- avoid application-level Bluetooth profiles in V1;
-- expose deterministic boot and failure diagnostics during development;
-- detect fatal controller initialization failure; and
-- enter a recoverable failure state rather than presenting malformed HCI traffic.
+- target `esp32`;
+- use ESP-IDF v5.5.5;
+- configure BR/EDR + BLE controller-only operation;
+- use VHCI between the ESP-IDF controller and project bridge logic;
+- expose the external H4 link through application-owned UART2;
+- route TX=GPIO17, RX=GPIO16, RTS=GPIO26, CTS=GPIO25;
+- enable hardware flow control;
+- keep UART0/CP210x available for development flashing/logging where practical;
+- avoid application-level Bluetooth profiles;
+- configure zero synchronous BR/EDR connections for V1;
+- validate controller-originated H4 packets before queueing; and
+- restart deterministically on fatal bridge/controller integrity failure.
 
-### 7.3 Reset/recovery
+### 7.3 Error/recovery contract
 
-The WROOM firmware SHALL tolerate:
+The WROOM path SHALL detect or fail safely on:
 
-- S3 restart while the WROOM remains powered;
-- host USB unplug/replug while the WROOM remains powered;
-- WROOM restart while the S3 remains powered; and
-- repeated controller initialization across normal development cycles.
+- controller initialization failure;
+- UART receive overflow/frame/parity/driver errors;
+- invalid inbound H4 traffic;
+- queue exhaustion; and
+- unexpected SCO traffic under the V1 configuration.
 
-If a dedicated cross-MCU reset/control signal is later proven necessary, it may be added as an explicitly documented hardware revision. It is not part of the current reference pinout.
+Physical reset/restart timing behavior remains an acceptance test and is not proven by source/CI alone.
 
 ---
 
-## 8. ESP32-S3 Firmware
+## 8. ESP32-S3 Native USB Firmware
 
 ### 8.1 Role
 
-The ESP32-S3 SHALL present the entire device to the host as a normal USB Bluetooth controller while forwarding HCI traffic to the WROOM-32.
+The ESP32-S3 SHALL present the assembled device as a normal USB Bluetooth Primary Controller while forwarding HCI traffic to/from the WROOM.
 
-### 8.2 USB device requirements
+The production S3 firmware SHALL target `esp32s3` and ESP-IDF v5.5.5.
 
-The V1 USB interface SHALL identify as the standard USB Bluetooth wireless-controller class expected by normal host Bluetooth drivers.
+### 8.2 Host-visible USB identity
 
-The descriptor set SHALL use the appropriate Bluetooth device/interface class, subclass, and protocol values and the endpoint types required by the USB Bluetooth transport.
+The device and Bluetooth interfaces use:
 
-Expected transport roles include:
+```text
+Class:    0xE0  Wireless Controller
+Subclass: 0x01  Bluetooth
+Protocol: 0x01  Primary Controller
+```
 
-- control transfers for HCI commands;
-- interrupt IN for HCI events;
-- bulk OUT/IN for ACL traffic; and
-- isochronous endpoints where required and supported for SCO/eSCO transport.
+Development identity is:
 
-Descriptor correctness SHALL be validated using host-side USB inspection tools during development.
+```text
+VID:          0xCAFE
+PID:          0x4011
+Manufacturer: ESP32 Radio Dongle
+Product:      ESP32 Radio Dongle V1
+Serial:       12 uppercase hexadecimal digits derived from S3 factory base MAC
+```
 
-### 8.3 USB identity
+`0xCAFE:0x4011` is development-only. Distributed production firmware SHALL use a USB VID/PID that the project is authorized to use.
 
-Development firmware SHALL define project-owned development values for:
+### 8.3 USB Bluetooth configuration
 
-- manufacturer string;
-- product string;
-- serial number strategy; and
-- development VID/PID policy.
+V1 uses the legacy Bluetooth Controller **two-interface** configuration.
 
-The project SHALL NOT claim another manufacturer's VID/PID for production use.
+#### Interface 0, alternate setting 0 — active HCI transport
 
-A proper VID/PID strategy is a release/commercialization concern and SHALL NOT block early functional development.
+- Class/subclass/protocol: E0/01/01.
+- HCI commands: host-to-device class control transfers on endpoint 0.
+- HCI events: interrupt IN endpoint `0x81`, 16-byte full-speed max packet.
+- ACL host-to-controller: bulk OUT endpoint `0x02`, 64-byte full-speed max packet.
+- ACL controller-to-host: bulk IN endpoint `0x82`, 64-byte full-speed max packet.
 
-### 8.4 Bridge behavior
+#### Interface 1, alternate setting 0 — zero voice bandwidth
+
+- Class/subclass/protocol: E0/01/01.
+- Zero endpoints.
+- Represents zero active voice channels.
+- V1 provides no nonzero-bandwidth alternate settings and no usable isochronous SCO endpoints.
+
+The total V1 configuration descriptor is 48 bytes and reports `bNumInterfaces=2`.
+
+### 8.4 USB class implementation
+
+V1 uses a project-owned TinyUSB application class shim (`radio_usb_bth`) rather than enabling the pinned stock TinyUSB BTH class.
+
+The shim SHALL:
+
+- service HCI command class-control transfers;
+- accept legacy device-targeted host-to-device class-request forms required for single-function compatibility without depending on historical `bRequest`, `wValue`, or `wIndex` values;
+- keep interface-targeted command routing strict to the primary interface;
+- forward HCI events over interrupt IN;
+- reassemble and validate ACL OUT traffic;
+- validate and send ACL IN traffic, including full-size bulk-transfer ZLP termination where required;
+- claim only the endpoint-free interface 1 alternate setting 0 for the SCO bandwidth interface;
+- reject unsupported endpoint-bearing/nonzero-bandwidth SCO forms; and
+- report protocol-integrity failures to the bridge recovery path.
+
+### 8.5 Bridge behavior
 
 The S3 bridge SHALL:
 
 - forward host HCI commands to the WROOM;
 - forward WROOM HCI events to the host;
 - forward ACL data bidirectionally;
-- support SCO/eSCO forwarding if the selected USB/controller implementation exposes it;
-- preserve packet ordering within each required transport stream;
-- never reinterpret profile-level traffic unnecessarily;
+- preserve HCI packet boundaries and ordering within required streams;
 - use bounded queues;
-- honor UART CTS/RTS; and
-- expose counters for transport errors during development.
+- honor UART CTS/RTS;
+- reject unexpected SCO packets rather than silently exposing pseudo-support; and
+- expose development counters for transport/lifecycle errors without putting diagnostic bytes on USB HCI endpoints.
 
-### 8.5 USB lifecycle
+### 8.6 USB lifecycle
 
-The S3 firmware SHALL correctly handle:
+The S3 source SHALL handle USB reset/configuration/suspend/resume/disconnect transitions and controlled recovery.
 
-- USB reset;
-- enumeration;
-- configuration;
-- suspend;
-- resume;
-- unplug/replug;
-- host reboot with dongle attached; and
-- repeated enumeration without requiring reflashing or physical reset.
+Physical acceptance must still verify:
 
-### 8.6 Debugging separation
+- native-USB enumeration;
+- repeated plug/replug;
+- real host reset and suspend/resume behavior; and
+- recovery after downstream controller loss.
 
-Debug logging SHALL NOT corrupt the HCI UART transport or the USB Bluetooth interface.
+### 8.7 Debugging separation
 
-Logs should use a separate development channel where practical. Logging volume must be bounded so that debug output cannot starve HCI processing.
+Debug logging SHALL NOT corrupt HCI UART traffic or USB Bluetooth endpoints.
+
+Release firmware uses the release configuration documented in `docs/V1_RELEASE_CONFIGURATION.md`; hardware logging-load impact remains a physical performance test.
 
 ---
 
@@ -307,56 +358,66 @@ Logs should use a separate development channel where practical. Logging volume m
 
 ### 9.1 Windows
 
-On a supported Windows installation with its normal Bluetooth components present:
+On a supported Windows installation with normal Bluetooth components present:
 
-1. Plugging in the device SHALL enumerate a USB Bluetooth adapter.
-2. Windows SHALL bind its normal in-box USB Bluetooth support without a project-specific driver package.
+1. Plugging in the S3 native USB connection SHALL enumerate a USB Bluetooth controller.
+2. Windows SHALL bind normal in-box USB Bluetooth support without a project-specific driver package/INF.
 3. Bluetooth SHALL appear in the normal Windows UI/device stack.
 4. Normal discovery, pairing, connect, disconnect, and reconnect operations SHALL work.
-5. No ESP32 Radio Dongle host application SHALL be required.
+5. No ESP32 Radio Dongle host application, daemon, serial helper, or custom driver SHALL be required.
 
 ### 9.2 Linux
 
 On a mainstream Linux installation with normal kernel USB Bluetooth support and BlueZ present:
 
-1. Plugging in the device SHALL bind through the standard USB Bluetooth path.
+1. Plugging in the S3 native USB connection SHALL bind through the standard USB Bluetooth path.
 2. An HCI controller SHALL become available to BlueZ.
 3. Normal discovery, pairing, connect, disconnect, and reconnect operations SHALL work.
-4. `btattach`, a custom serial helper, or an ESP32 Radio Dongle daemon SHALL NOT be required.
+4. `btattach`, a custom serial helper, project kernel module, or ESP32 Radio Dongle daemon SHALL NOT be required.
 
 ### 9.3 Driverless definition
 
-For V1, "driverless" means **no project-specific host driver or software installation is required**. The operating system's ordinary Bluetooth stack and class/transport drivers are expected dependencies.
+For V1, "driverless" means **no project-specific host driver or software installation is required for normal Bluetooth operation**. The operating system's ordinary Bluetooth stack and USB Bluetooth transport driver remain expected dependencies.
 
 ---
 
 ## 10. Bluetooth Functional Scope
 
-V1 functional validation SHALL cover both controller modes:
-
 ### 10.1 BLE
 
-At minimum:
+V1 acceptance SHALL include:
 
-- passive/active discovery as exercised by the host;
+- discovery/scanning through the host stack;
 - pairing/bonding where applicable;
-- GATT connection to a representative BLE peripheral;
+- representative GATT connection/use;
 - disconnect/reconnect; and
 - repeated scan/connect cycles.
 
-### 10.2 Bluetooth Classic
+### 10.2 Bluetooth Classic over ACL
 
-At minimum:
+V1 acceptance SHALL include:
 
 - Classic inquiry/discovery;
 - pairing;
 - connection to representative Classic devices;
-- HID device operation; and
+- representative HID operation; and
 - reconnect after link loss or USB reconnect.
 
-A2DP or another high-throughput Classic profile SHOULD be included in acceptance testing because it exercises ACL traffic heavily.
+A2DP or another sustained ACL workload SHOULD be used to exercise the bridge under higher traffic.
 
-SCO/eSCO voice support SHALL be treated separately: the architecture must not accidentally preclude it, but final V1 acceptance may mark it optional if the ESP32 controller/USB stack combination cannot support it reliably without disproportionate scope expansion. Any such limitation must be documented explicitly rather than silently omitted.
+### 10.3 SCO/eSCO decision
+
+SCO/eSCO synchronous voice transport is intentionally **out of V1 scope**.
+
+V1 SHALL:
+
+- configure zero synchronous BR/EDR controller connections;
+- expose interface 1 alternate setting 0 with zero endpoints for zero voice bandwidth;
+- expose no nonzero-bandwidth SCO alternate settings;
+- expose no usable USB voice isochronous endpoints; and
+- not claim HFP/HSP voice-audio support.
+
+This is a documented V1 product limitation, not an unresolved decision.
 
 ---
 
@@ -368,24 +429,26 @@ The implementation SHALL detect or safely tolerate:
 
 - malformed/invalid H4 packet type;
 - truncated HCI packet;
-- invalid HCI packet length;
-- UART framing/overflow errors;
+- invalid/oversized HCI packet length;
+- UART framing/overflow/parity/driver errors;
 - queue exhaustion;
 - WROOM controller failure/reset;
-- S3 USB reset;
-- host disconnect;
-- unexpected controller silence/timeouts during initialization; and
-- repeated rapid reconnect cycles.
+- S3 USB reset/disconnect;
+- unexpected controller silence/timeouts during initialization;
+- unsupported SCO traffic; and
+- repeated reconnect cycles.
 
-### 11.2 Fail-safe behavior
+### 11.2 Fail-closed behavior
 
-On unrecoverable transport corruption, the firmware SHALL reset/reinitialize the affected transport/controller rather than forwarding ambiguous bytes.
+On unrecoverable transport corruption, firmware SHALL reset/reinitialize rather than forward ambiguous bytes.
 
-No error path may intentionally fabricate successful HCI completion for an operation that was not completed by the controller.
+No error path may fabricate successful HCI completion for an operation the real controller did not complete.
 
-### 11.3 Watchdogs
+### 11.3 Recovery
 
-Watchdogs may be used, but watchdog resets must be attributable through retained/reset-reason diagnostics during development.
+The current fatal-integrity recovery policy is deterministic MCU restart followed by normal initialization/readiness probing.
+
+Source/CI evidence proves the policy exists; physical acceptance must prove its behavior under real reset, cable, and host timing.
 
 ---
 
@@ -395,181 +458,225 @@ V1 prioritizes correctness and stability over maximum throughput.
 
 Performance acceptance SHALL include:
 
-- no avoidable HCI packet loss under sustained ACL traffic;
-- stable operation with hardware flow control enabled;
+- no bridge-caused malformed HCI framing under sustained ACL traffic;
+- stable hardware RTS/CTS operation;
 - no unbounded queue growth;
-- no USB starvation caused by logging or control tasks;
-- no UART starvation caused by USB handling; and
+- observable queue high-water/full counters;
+- no USB/UART starvation caused by logging/control work; and
 - enough sustained throughput for representative Classic and BLE workloads.
 
-The project SHALL measure actual throughput and queue high-water marks before declaring V1 complete.
+The project SHALL measure actual throughput, UART errors, and queue high-water marks before V1 final acceptance.
+
+The final UART baud is a measured hardware decision, not a nominal-rate assumption.
 
 ---
 
-## 13. Development and Build Structure
+## 13. Build, Component, and Release Structure
 
-The repository SHOULD keep the two firmware targets separate while sharing protocol/configuration definitions where useful.
+V1 uses ESP-IDF **v5.5.5 exactly** for both production targets.
 
-Recommended structure:
+Production projects:
 
 ```text
-esp32-radio-dongle/
-  docs/
-    ESP32_RADIO_DONGLE_V1_SPEC.md
-    ESP32_RADIO_DONGLE_V1_TODO.md
-  firmware/
-    esp32s3_usb_bridge/
-    esp32_wroom_bt_controller/
-  components/
-    shared_protocol/        # optional shared definitions/tests
-  scripts/
-  tests/
+firmware/esp32_wroom_bt_controller/
+firmware/esp32s3_usb_bridge/
 ```
 
-Each firmware target SHALL be independently buildable and flashable.
+Shared production transport component:
 
-The project SHOULD pin or document the supported ESP-IDF version rather than depending indefinitely on whatever version happens to be installed on a developer machine.
+```text
+firmware/components/radio_h4/
+```
+
+Development-only hardware-smoke projects/components:
+
+```text
+firmware/bringup/esp32_wroom_uart_smoke/
+firmware/bringup/esp32s3_uart_smoke/
+firmware/components/radio_uart_smoke/
+```
+
+Requirements:
+
+- Production projects SHALL remain independently buildable/flashable.
+- Production component discovery SHALL NOT pull in `radio_uart_smoke`.
+- CI SHALL enforce production/development component separation.
+- Release builds SHALL use `sdkconfig.release` and the WARN-only/reproducible-build policy in `docs/V1_RELEASE_CONFIGURATION.md`.
+- Development smoke images SHALL never substitute for a production image during final acceptance.
 
 ---
 
-## 14. Test Strategy
+## 14. Test and Evidence Strategy
 
-Testing SHALL be layered.
+Testing is layered so software evidence is never confused with physical interoperability evidence.
 
-### 14.1 Host-independent tests
+### 14.1 Host/software tests
 
-Where practical, test:
+Host-runnable tests cover:
 
-- H4 parser/encoder behavior;
-- packet boundary handling;
-- queue behavior;
-- malformed frame rejection;
-- buffer limits;
-- flow-control state transitions;
-- reset state machine; and
-- USB/HCI mapping logic.
+- H4 parser/packet validation;
+- fragmentation/back-to-back frames;
+- queue limits/high-water/full behavior;
+- production USB class control/event/ACL behavior;
+- legacy HCI control-request compatibility;
+- USB ACL reassembly and transfer termination;
+- exact production USB descriptor bytes/strings; and
+- release/component policy checks.
 
-### 14.2 Hardware bring-up tests
+### 14.2 Firmware build validation
 
-Verify:
+CI SHALL build:
 
-- exact pin wiring;
-- UART bidirectional traffic;
-- RTS/CTS operation;
-- WROOM controller initialization;
-- basic HCI command/event exchange; and
-- stable USB enumeration.
+- WROOM production firmware;
+- S3 production firmware;
+- both dedicated UART smoke images; and
+- both WARN-only production release profiles.
 
-### 14.3 Linux acceptance tests
+### 14.3 Hardware bring-up tests
 
-At minimum:
+Physical acceptance must verify:
 
-- cold plug;
-- warm replug;
-- boot with dongle attached;
-- controller discovery by the kernel/BlueZ;
-- BLE scan/pair/connect;
-- Classic scan/pair/connect;
-- HID device test;
-- sustained traffic test; and
-- repeated disconnect/reconnect cycles.
+- common ground and correct wiring;
+- bidirectional UART;
+- RTS/CTS assertion/deassertion and real backpressure;
+- reset/boot pin behavior;
+- real WROOM HCI command/event exchange; and
+- native USB enumeration.
 
-### 14.4 Windows acceptance tests
+### 14.4 Linux acceptance
 
 At minimum:
 
-- cold plug;
-- warm replug;
+- cold plug and warm replug;
 - boot with dongle attached;
-- automatic binding to the normal Windows Bluetooth stack;
-- no project-specific driver installation;
-- BLE scan/pair/connect;
+- normal kernel USB Bluetooth/BlueZ controller discovery;
+- no project helper/driver;
+- BLE scan/pair/connect/use;
 - Classic scan/pair/connect;
-- HID device test;
-- sustained traffic test; and
-- repeated disconnect/reconnect cycles.
+- HID test;
+- sustained ACL traffic; and
+- repeated reconnect cycles.
 
-### 14.5 Stress tests
+### 14.5 Windows acceptance
 
-Include:
+At minimum:
+
+- cold plug and warm replug;
+- boot with dongle attached;
+- automatic binding to normal in-box Bluetooth support;
+- no project-specific driver/INF;
+- BLE scan/pair/connect/use;
+- Classic scan/pair/connect;
+- HID test;
+- sustained ACL traffic; and
+- repeated reconnect cycles.
+
+### 14.6 Recovery/stability
+
+Physical stress acceptance includes:
 
 - repeated USB cycles;
-- repeated Bluetooth connection cycles;
-- simultaneous command/event and ACL load;
-- queue pressure;
-- controller reset during host activity;
-- S3 reset during controller activity; and
-- multi-hour stability runs before release.
+- host reboot/suspend-resume;
+- WROOM reset while S3 remains powered;
+- S3 reset while WROOM remains powered;
+- queue/traffic pressure;
+- final UART-rate characterization; and
+- multi-hour stability runs.
 
 ---
 
-## 15. V1 Acceptance Criteria
+## 15. Evidence Policy
+
+A software implementation, host test, static review, or CI build SHALL NOT by itself close a task whose acceptance criterion requires physical boards or a real host Bluetooth stack.
+
+The current evidence mapping is maintained in:
+
+- `docs/V1_EVIDENCE_INDEX.md`;
+- `docs/V1_DOCUMENTATION_EVIDENCE_AUDIT.md`; and
+- `docs/ESP32_RADIO_DONGLE_V1_TODO.md`.
+
+Device tests may be deferred without being treated as PASS or FAIL.
+
+---
+
+## 16. V1 Acceptance Criteria
 
 V1 is complete only when all of the following are true:
 
-1. Both firmware images build reproducibly from the repository.
-2. The documented reference wiring works without undocumented extra circuitry.
-3. The WROOM-32 exposes working BR/EDR + BLE controller functionality to the S3.
-4. The S3 enumerates through native USB as a USB Bluetooth controller.
-5. Windows recognizes and uses the adapter without installing project-specific host software or a project-specific driver.
-6. Linux recognizes and uses the adapter without `btattach`, a custom driver, daemon, or project-specific helper.
-7. Representative BLE discovery/pair/connect operations pass on both operating systems.
-8. Representative Bluetooth Classic discovery/pair/connect operations pass on both operating systems.
-9. A representative Bluetooth HID device works on both operating systems.
-10. Sustained ACL traffic is stable and does not corrupt HCI framing.
-11. USB unplug/replug and host reboot recovery work without reflashing.
-12. Transport/controller failures fail closed and recover predictably.
-13. No known V1 blocker is hidden behind development-only host software.
-14. Documentation accurately describes flashing, wiring, normal use, known limitations, and test evidence.
+1. Both production firmware images build reproducibly from the repository.
+2. The selected/reference wiring works without undocumented extra circuitry.
+3. Physical UART and RTS/CTS behavior pass.
+4. The WROOM exposes working BR/EDR + BLE controller functionality to the S3.
+5. The S3 enumerates through native USB as the documented two-interface USB Bluetooth controller.
+6. Windows recognizes/uses the adapter without project-specific host software or driver.
+7. Linux recognizes/uses the adapter without `btattach`, custom driver, daemon, or helper.
+8. Representative BLE discovery/pair/connect/use operations pass on both operating systems.
+9. Representative Bluetooth Classic discovery/pair/connect operations pass on both operating systems.
+10. A representative Bluetooth HID device works on both operating systems.
+11. Sustained ACL traffic remains stable without bridge-caused HCI corruption.
+12. USB unplug/replug and host reboot recovery work without reflashing.
+13. Required reset/suspend-resume/recovery scenarios pass.
+14. Final UART rate and stability evidence are recorded.
+15. Transport/controller failures fail closed and recover predictably.
+16. No V1 blocker is hidden behind development-only host software or diagnostic firmware.
+17. Release configuration and artifact hashes are captured from the exact hardware-qualified release commit.
+18. Documentation accurately reflects the hardware-tested behavior and known limitations.
 
 ---
 
-## 16. V2 Architectural Reservation: Wi-Fi
+## 17. V2 Architectural Reservation: Wi-Fi
 
 Wi-Fi is not part of V1 implementation or acceptance.
 
-V2 may add USB Wi-Fi functionality using the ESP32-S3's Wi-Fi radio while retaining V1 Bluetooth functionality through the WROOM-32.
+V2 may add USB Wi-Fi functionality using the ESP32-S3 radio while retaining V1 Bluetooth functionality through the WROOM.
 
-One candidate V2 experiment is an RTL8188EU-compatible USB facade so that an existing host Wi-Fi driver may bind to the ESP32-S3. This is an experiment, not a V1 dependency or promise.
+One candidate experiment is an RTL8188EU-compatible USB facade so an existing host Wi-Fi driver may bind. This is research, not a V1 dependency or promise.
 
-V1 SHALL therefore avoid unnecessary assumptions that prevent:
+V2 work must preserve:
 
-- a future USB composite configuration;
-- additional USB interfaces/endpoints if resources permit;
-- concurrent S3 Wi-Fi activity; or
-- retaining the existing WROOM-S3 HCI UART link unchanged.
-
-V2 design work must not weaken V1's driverless Bluetooth behavior.
+- the WROOM-S3 HCI UART contract unless a deliberate hardware revision is approved;
+- normal driverless V1 Bluetooth behavior;
+- USB resource headroom where practical; and
+- explicit separation between V1 acceptance and experimental Wi-Fi compatibility.
 
 ---
 
-## 17. Decisions Locked for V1
+## 18. Decisions Locked for V1
 
-The following are considered decided unless deliberately revised:
+The following are decided unless deliberately revised with SPEC/TODO/evidence updates:
 
-- Two-MCU design: ESP32-S3 + ESP32-WROOM-32.
-- WROOM-32 supplies Bluetooth Classic + BLE.
-- S3 supplies native USB.
+- Two-MCU design: ESP32-S3 + original ESP32-WROOM-32.
+- Selected initial boards are recorded in `V1_BOARD_VERIFICATION.md`.
+- WROOM supplies Bluetooth Classic + BLE controller/radio functionality.
+- S3 supplies native USB Bluetooth HCI transport.
+- ESP-IDF v5.5.5 is the exact supported baseline.
 - HCI H4 is the inter-MCU protocol.
 - Hardware RTS/CTS is part of the reference transport.
-- Reference pins are GPIO4/5/6/7 on S3 and GPIO16/17/25/26 on WROOM-32 as documented above.
+- Shared initial UART rate is 115200 baud; final rate requires hardware measurement.
+- Reference pins are S3 GPIO4/5/6/7 and WROOM GPIO16/17/25/26.
 - Host-facing V1 is standard USB Bluetooth, not USB serial Bluetooth.
+- USB Bluetooth uses the two-interface legacy Controller layout described in Section 8.
+- The S3 uses the project-owned `radio_usb_bth` TinyUSB application class shim.
+- Development USB identity is `0xCAFE:0x4011`; production authorization is still required before distribution.
+- SCO/eSCO synchronous voice transport is out of V1 scope.
 - No project-specific Windows/Linux host software is permitted for normal V1 operation.
+- Development smoke firmware is not a production dependency.
 - Wi-Fi is V2.
 
 ---
 
-## 18. Deferred Decisions
+## 19. Decisions Still Deferred to Hardware/Release Evidence
 
-The following may be selected during implementation without changing the architecture:
+The following remain intentionally unresolved until the specified evidence exists:
 
-- exact ESP-IDF release after compatibility validation;
-- exact TinyUSB/ESP-IDF USB integration mechanism;
 - final UART baud rate;
-- exact queue sizes;
-- exact development VID/PID values and eventual production USB identity strategy;
-- optional dedicated inter-MCU reset/control GPIO;
-- final custom PCB power design;
-- whether SCO/eSCO voice transport is a V1 release requirement or a documented post-V1 enhancement.
+- measured throughput/stability limits;
+- final tested Windows versions/builds;
+- final tested Linux distribution/kernel/BlueZ versions;
+- final BLE/Classic peripheral compatibility matrix;
+- physical recovery behavior/timing;
+- whether a dedicated inter-MCU reset/control GPIO is actually necessary for a later hardware revision;
+- final custom-PCB/power implementation; and
+- production USB VID/PID authorization/assignment.
 
-Any deferred decision that affects host compatibility must be recorded in this specification before V1 release.
+Any future decision that affects host compatibility or the physical contract must be reflected in this SPEC, the TODO, and the evidence index before V1 release.
