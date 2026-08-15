@@ -8,16 +8,23 @@ A task that requires physical boards, USB enumeration, Bluetooth peripherals, Wi
 
 Device testing is currently deferred by project decision. Deferred device tasks are neither PASS nor FAIL.
 
+## Current software/documentation checkpoint
+
+The fully green firmware/software checkpoint is GitHub Actions run `31873127842` at commit `57864e9e83b5760c70fbff2e3b5f1ab1cfbe174e`.
+
+The subsequent V1-1305 documentation audit reconciles the SPEC/TODO/supporting docs without changing the underlying device-test status. See `docs/V1_DOCUMENTATION_EVIDENCE_AUDIT.md`.
+
 ## Software-validated gates
 
 ### V1-G00 — Repository/toolchain baseline: PASS
 
-Evidence recorded in `ESP32_RADIO_DONGLE_V1_TODO.md`:
+Evidence:
 
 - ESP-IDF pinned to v5.5.5.
-- GitHub Actions run `31851995899`.
-- Both production firmware targets built successfully.
-- Host H4 regression suite passed.
+- both production firmware targets build independently;
+- target/version guards are present;
+- GitHub Actions build coverage exists; and
+- host H4 regression suite passes.
 
 Relevant implementation/docs:
 
@@ -53,11 +60,10 @@ Board-selection evidence is complete:
 - Prior project-owner board photographs and Linux USB enumeration were used as physical identity evidence.
 - The S3 previously enumerated project USB firmware as `303a:4001`.
 - The WROOM board previously enumerated its CP210x USB-UART bridge as `10c4:ea60`.
-- Espressif documentation verifies the selected S3 board family exposes GPIO4-7 and native USB, and the WROOM/module layout supports the required GPIO16/17/25/26 signals.
+- Pin/native-USB compatibility is documented in `docs/V1_BOARD_VERIFICATION.md` and `docs/HARDWARE.md`.
 
 Software preparation complete:
 
-- board compatibility/selection record: `docs/V1_BOARD_VERIFICATION.md`;
 - dedicated WROOM smoke firmware: `firmware/bringup/esp32_wroom_uart_smoke/`;
 - dedicated S3 smoke firmware: `firmware/bringup/esp32s3_uart_smoke/`;
 - shared bidirectional UART/RTS-CTS test logic: `firmware/components/radio_uart_smoke/`;
@@ -77,6 +83,7 @@ Still required when device testing resumes:
 Software implementation complete:
 
 - original ESP32 target;
+- ESP-IDF v5.5.5;
 - BR/EDR + BLE controller-only configuration;
 - VHCI bridge;
 - UART2 GPIO mapping and hardware flow control;
@@ -102,7 +109,7 @@ Software implementation complete:
 - no usable/fake SCO/ISO endpoints or nonzero-bandwidth alternate settings; and
 - lifecycle source handling for attach/detach/suspend/resume.
 
-The normative correction from the original one-interface planning wording is recorded in `docs/V1_USB_COMPLIANCE_CORRECTION.md`.
+The current normative layout is documented directly in `docs/ESP32_RADIO_DONGLE_V1_SPEC.md` and `docs/USB_BLUETOOTH_V1.md`. `docs/V1_USB_COMPLIANCE_CORRECTION.md` remains as decision history.
 
 Host-only evidence from GitHub Actions run `31873127842`:
 
@@ -142,6 +149,14 @@ Still required:
 
 Software path exists end-to-end in source.
 
+Software evidence includes:
+
+- command/event/ACL forwarding paths;
+- controller readiness probe using HCI Reset and Read Local Version;
+- bounded queues and H4 validation;
+- no fabricated success responses; and
+- development diagnostic counters.
+
 Still required:
 
 - a real USB -> S3 -> UART -> WROOM -> UART -> S3 -> USB HCI round trip; and
@@ -170,7 +185,7 @@ Static review evidence exists in:
 - `firmware/esp32_wroom_bt_controller/sdkconfig.release`; and
 - `firmware/esp32s3_usb_bridge/sdkconfig.release`.
 
-GitHub Actions run `31873127842`, commit `57864e9e83b5760c70fbff2e3b5f1ab1cfbe174e`, is the current fully green software checkpoint:
+GitHub Actions run `31873127842`, commit `57864e9e83b5760c70fbff2e3b5f1ab1cfbe174e`, is the fully green software checkpoint:
 
 - host formatting and policy gates passed;
 - all H4/USB class/control-compatibility/descriptor host tests passed;
@@ -189,16 +204,33 @@ Development release artifacts from that run:
 
 Those artifacts are pipeline/software evidence only; they are not the final V1 release because hardware qualification has not occurred. The final release must be generated from the exact hardware-qualified release commit.
 
-V1-904 remains open: only real sustained traffic can establish whether release/development logging affects timing on physical hardware.
+V1-904 remains open: only real sustained traffic can establish whether development logging affects timing on physical hardware.
+
+## Documentation/evidence audit
+
+### V1-1305 — software audit: PASS; hardware-behavior re-audit OPEN
+
+Audit record:
+
+- `docs/V1_DOCUMENTATION_EVIDENCE_AUDIT.md`
+
+Audit conclusions:
+
+- completed software tasks/gates have traceable implementation/test/CI/documentation evidence;
+- the main SPEC/TODO are reconciled with the implemented v5.5.5, board-selection, two-interface USB, no-SCO, release, and development-boundary decisions;
+- stale board-status and release-review wording was corrected in supporting docs;
+- no known open V1 blocker is hidden by a development-only host path or bring-up firmware;
+- `scripts/check-doc-contract.sh` and `.github/workflows/docs-ci.yml` enforce the locked documentation contract; and
+- the parent V1-1305 remains open only for the required post-device-test reconciliation against measured hardware behavior.
 
 ## Documentation gate
 
 ### V1-G120 — Documentation/user experience
 
-Software documentation exists for build, flashing, wiring, usage, troubleshooting, limitations, board verification, UART bring-up, security review, release configuration, USB transport, and the USB compliance correction.
+Software documentation exists for build, flashing, selected boards/wiring, usage, troubleshooting, limitations, UART bring-up, security review, release configuration, USB transport, evidence mapping, and the V1-1305 audit.
 
 The gate remains open because the complete instructions must eventually be validated against real boards and clean Windows/Linux hosts.
 
 ## Final acceptance
 
-V1-GFINAL remains open. Software-only work can prepare release artifacts, checks, documentation, and test harnesses, but cannot establish the central product claim: plug the S3 native USB connection into Windows or Linux and use Bluetooth Classic + BLE through the operating system's normal Bluetooth stack without project-specific host software.
+V1-GFINAL remains open. Software/documentation work can prepare release artifacts, checks, documentation, and test harnesses, but cannot establish the central product claim: plug the S3 native USB connection into Windows or Linux and use Bluetooth Classic + BLE through the operating system's normal Bluetooth stack without project-specific host software.
