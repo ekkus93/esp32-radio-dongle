@@ -39,6 +39,9 @@ jobs:
       - name: Check release logging policy
         run: bash scripts/check-release-logging.sh
 
+      - name: Check component boundary policy
+        run: bash scripts/check-component-boundaries.sh
+
       - name: Build H4 host tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic \
