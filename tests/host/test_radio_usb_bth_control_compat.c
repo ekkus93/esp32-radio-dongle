@@ -199,10 +199,14 @@ int main(void) {
     execute_command(driver, &request);
     assert(s_command_count == 3u);
 
-    request = make_request(TUSB_REQ_RCPT_INTERFACE, TUSB_DIR_OUT, 0xe0u, 0x4321u,
+    request = make_request(TUSB_REQ_RCPT_INTERFACE, TUSB_DIR_OUT, 0x00u, 0x0000u,
                            DESCRIPTORS.interface.bInterfaceNumber);
     execute_command(driver, &request);
     assert(s_command_count == 4u);
+
+    request = make_request(TUSB_REQ_RCPT_INTERFACE, TUSB_DIR_OUT, 0xe0u, 0x0000u,
+                           DESCRIPTORS.interface.bInterfaceNumber);
+    assert(!driver->control_xfer_cb(0u, CONTROL_STAGE_SETUP, &request));
 
     request = make_request(TUSB_REQ_RCPT_INTERFACE, TUSB_DIR_OUT, 0x00u, 0x0000u,
                            (uint16_t)(DESCRIPTORS.interface.bInterfaceNumber + 1u));
