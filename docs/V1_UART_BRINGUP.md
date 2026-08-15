@@ -9,9 +9,11 @@ Do not use the production Bluetooth firmware for this first electrical test. The
 
 Both use the same 115200-baud inter-MCU configuration as the V1 production firmware and configure UART hardware RTS/CTS.
 
+Read `docs/V1_ELECTRICAL_PREFLIGHT.md` before performing this procedure. The direct HCI GPIO link is qualified only with both MCU I/O domains powered normally; do not deliberately drive an unpowered peer.
+
 ## 1. Required physical wiring
 
-Power both development boards independently from their normal USB connectors during this prototype test. Connect only the five signals below between boards.
+The V1 reference interconnect is:
 
 | ESP32-S3 | Direction | ESP32-WROOM-32 |
 | --- | --- | --- |
@@ -38,9 +40,22 @@ GND         --------------------------- GND
 - Connect GND between the boards.
 - Do **not** connect the two development boards' 3.3 V pins together.
 - Do **not** connect their 5 V/VBUS pins together for this bring-up.
-- Each board remains powered by its own USB connection.
-- Make all signal connections with both boards unpowered, then re-check the five-wire mapping before applying power.
-- The current project assumes 3.3 V ESP32 GPIO signaling on both ends; do not insert a 5 V UART adapter in this link.
+- Give each board one normal power source; do not also feed a board from a header supply while its USB power is active unless that exact board explicitly supports it.
+- The HCI signals are 3.3 V logic. Do not insert a 5 V UART adapter in this link.
+- Do not deliberately leave one MCU board completely unpowered while the other actively drives the four HCI signal wires.
+
+### Recommended initial power-up method
+
+Preferred bench arrangement:
+
+1. With the USB hub/power source switched **off**, connect both boards' USB cables.
+2. With both boards unpowered, connect and re-check GND plus the four HCI signal wires.
+3. Use one switched hub/power control to energize both development-board USB feeds together.
+4. Confirm both boards reach their normal smoke-firmware startup state before beginning the test.
+
+If a common switched USB source is not available, do not intentionally leave a fully booted peer driving an unpowered board. Use a bench arrangement that keeps both boards normally powered before the direct HCI GPIO link is exercised.
+
+The previous procedure's deliberate WROOM-first/S3-second cold-power test is no longer part of V1 acceptance because the GPIO interface is not being claimed as power-off tolerant.
 
 ## 2. Flash the dedicated WROOM smoke image
 
@@ -133,25 +148,34 @@ Copy or photograph the following into the bring-up record before marking the tas
 1. Exact ESP32-S3 board/module identification.
 2. Exact ESP32-WROOM-32 board/module identification.
 3. Photograph or wiring record showing all five interconnects.
-4. Confirmation that both boards were independently USB-powered and no 3.3 V or 5 V rails were tied together.
-5. WROOM boot log showing its UART pin configuration and `READY` state.
-6. S3 log showing all three `PASS` phases and final `BRINGUP PASS`.
-7. The two measured RTS/CTS drain times.
-8. Reset/boot test results described below.
+4. Confirmation that each board used one intended power source and no 3.3 V or 5 V rails were tied board-to-board.
+5. Confirmation that both boards were normally powered while the direct HCI GPIO link was active.
+6. Description of the common/safe power-up method used.
+7. WROOM boot log showing its UART pin configuration and `READY` state.
+8. S3 log showing all three `PASS` phases and final `BRINGUP PASS`.
+9. The two measured RTS/CTS drain times.
+10. Reset/boot test results described below.
 
 ## 6. Reset / boot-strap conflict check
 
-After the first full pass, leave the five interconnect wires installed.
+After the first full pass, leave both boards powered and leave the five interconnect wires installed.
 
 Run these checks:
 
-1. Reset the WROOM five times while the S3 remains powered.
-2. Reset the S3 five times while the WROOM remains powered.
-3. Remove power from both boards, then apply WROOM power followed by S3 power five times.
-4. Verify each board reaches its normal smoke-test startup log on every cycle.
-5. Re-run at least one complete smoke-test pass after the reset sequence.
+1. Press/reset the WROOM five times while the S3 remains powered.
+2. Press/reset the S3 five times while the WROOM remains powered.
+3. Verify each reset uses the board reset/EN mechanism; do not remove power from one MCU while the peer remains powered and driving the HCI wires.
+4. Power **both boards down together**, then power **both boards up together** five times using the same safe/common power method used for initial bring-up.
+5. Verify each board reaches its normal smoke-test startup log on every cycle.
+6. Re-run at least one complete smoke-test pass after the reset sequence.
 
 Record any boot-loop, ROM-download-mode entry, UART garbage, or failure to reach the smoke-test application. Any such event keeps V1-104 open until understood.
+
+### Independent full power removal is a separate requirement
+
+V1-G10 does not claim that one raw ESP32 GPIO endpoint may remain driven while the other MCU's I/O domain is unpowered. If later acceptance requires physically removing power from one board while the other remains active and wired, first define/qualify isolation or sequencing hardware for that condition.
+
+A reset with VDD still present is not the same electrical condition as removing board power.
 
 ## 7. Optional logic-analyzer confirmation
 
@@ -171,11 +195,12 @@ This trace is useful evidence but is not required if the automated timing and pa
 Check, in order:
 
 1. common GND;
-2. TX/RX crossing (GPIO4 -> GPIO16 and GPIO17 -> GPIO5);
-3. RTS/CTS crossing (GPIO6 -> GPIO25 and GPIO26 -> GPIO7);
-4. both images are the dedicated smoke-test builds;
-5. both images use the shared 115200-baud configuration;
-6. exact board variants and pin accessibility from `V1_BOARD_VERIFICATION.md`.
+2. both boards are normally powered;
+3. TX/RX crossing (GPIO4 -> GPIO16 and GPIO17 -> GPIO5);
+4. RTS/CTS crossing (GPIO6 -> GPIO25 and GPIO26 -> GPIO7);
+5. both images are the dedicated smoke-test builds;
+6. both images use the shared 115200-baud configuration;
+7. exact board variants and pin accessibility from `V1_BOARD_VERIFICATION.md`.
 
 ### Ping passes but Phase B fails
 
