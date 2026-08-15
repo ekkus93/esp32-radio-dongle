@@ -62,6 +62,18 @@ jobs:
       - name: Run USB Bluetooth class host tests
         run: /tmp/test_radio_usb_bth
 
+      - name: Build USB descriptor host tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -pedantic \
+            -Itests/host/stubs \
+            -Ifirmware/esp32s3_usb_bridge/main \
+            firmware/esp32s3_usb_bridge/main/usb_descriptors.c \
+            tests/host/test_usb_descriptors.c \
+            -o /tmp/test_usb_descriptors
+
+      - name: Run USB descriptor host tests
+        run: /tmp/test_usb_descriptors
+
   build:
     name: Build ${{ matrix.name }}
     runs-on: ubuntu-latest
