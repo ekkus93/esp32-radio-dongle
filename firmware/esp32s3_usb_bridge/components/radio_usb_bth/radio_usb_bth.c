@@ -17,11 +17,13 @@
 
 typedef struct {
     uint8_t interface_number;
+    uint8_t sco_interface_number;
     uint8_t event_in_ep;
     uint8_t acl_in_ep;
     uint8_t acl_out_ep;
     uint16_t acl_in_packet_size;
     bool opened;
+    bool sco_interface_opened;
     bool acl_zlp_pending;
     uint16_t acl_zlp_payload_len;
     size_t acl_rx_used;
@@ -190,12 +192,33 @@ static void class_reset(uint8_t rhport) {
     memset(&s_state, 0, sizeof(s_state));
 }
 
+static bool interface_identity_valid(const tusb_desc_interface_t *interface) {
+    return interface != NULL && interface->bInterfaceClass == TUSB_CLASS_WIRELESS_CONTROLLER &&
+           interface->bInterfaceSubClass == RADIO_USB_BTH_APP_SUBCLASS &&
+           interface->bInterfaceProtocol == RADIO_USB_BTH_PRIMARY_CONTROLLER_PROTOCOL &&
+           interface->bAlternateSetting == 0u;
+}
+
 static uint16_t class_open(uint8_t rhport, const tusb_desc_interface_t *interface,
                            uint16_t max_len) {
-    if (interface == NULL || interface->bInterfaceClass != TUSB_CLASS_WIRELESS_CONTROLLER ||
-        interface->bInterfaceSubClass != RADIO_USB_BTH_APP_SUBCLASS ||
-        interface->bInterfaceProtocol != RADIO_USB_BTH_PRIMARY_CONTROLLER_PROTOCOL ||
-        interface->bNumEndpoints != 3u || max_len < RADIO_USB_BTH_PRIMARY_DESC_LEN) {
+    if (!interface_identity_valid(interface) || max_len < sizeof(tusb_desc_interface_t)) {
+        return 0u;
+    }
+
+    /* Bluetooth USB controllers expose a second interface whose alternate
+     * setting 0 represents zero active voice channels. V1 intentionally has no
+     * SCO transport, so claim only this endpoint-free default setting. */
+    if (interface->bNumEndpoints == 0u) {
+        if (!s_state.opened || s_state.sco_interface_opened ||
+            interface->bInterfaceNumber != (uint8_t)(s_state.interface_number + 1u)) {
+            return 0u;
+        }
+        s_state.sco_interface_number = interface->bInterfaceNumber;
+        s_state.sco_interface_opened = true;
+        return sizeof(tusb_desc_interface_t);
+    }
+
+    if (s_state.opened || interface->bNumEndpoints != 3u || max_len < RADIO_USB_BTH_PRIMARY_DESC_LEN) {
         return 0u;
     }
 
