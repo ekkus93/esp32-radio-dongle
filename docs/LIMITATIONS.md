@@ -6,10 +6,10 @@ This file records intentional V1 limits separately from unresolved defects. It m
 
 Physical ESP32 and host-device testing is intentionally deferred at the current development checkpoint.
 
-The repository has software/CI evidence for H4 framing and queues, production USB Bluetooth class behavior under a fake TinyUSB backend, exact production USB descriptor bytes/strings, logging policy, and ESP-IDF compilation where recorded in the evidence index. Those checks do **not** establish any of the following physical claims:
+The repository has software/CI evidence for H4 framing and queues, production USB Bluetooth class behavior under a fake TinyUSB backend, exact production USB descriptor bytes/strings, logging/component policy, and ESP-IDF compilation/release builds where recorded in the evidence index. Those checks do **not** establish any of the following physical claims:
 
 - electrical UART or RTS/CTS correctness on the selected boards;
-- successful native-USB enumeration from a real ESP32-S3;
+- successful native-USB enumeration of the V1 Bluetooth firmware from a real ESP32-S3;
 - automatic Windows Bluetooth-driver binding;
 - automatic Linux `btusb`/BlueZ binding;
 - real BR/EDR or BLE radio operation through the WROOM controller;
@@ -23,9 +23,14 @@ Those items remain open until device testing resumes. See `V1_EVIDENCE_INDEX.md`
 
 **Status: intentionally not supported in V1.**
 
-The pinned TinyUSB Bluetooth device implementation contains voice/ISO endpoint scaffolding but does not provide a reliable end-to-end application data path suitable for this project. V1 therefore exposes only Bluetooth HCI command, event, and ACL USB transports through a small project-owned TinyUSB application class.
+The pinned TinyUSB Bluetooth device implementation does not provide the end-to-end SCO/ISO application path required by this project. V1 therefore uses a project-owned TinyUSB application class for HCI command/event/ACL data.
 
-The WROOM controller is configured for zero synchronous BR/EDR connections, and the S3 descriptor set exposes no Bluetooth voice isochronous endpoints. V1 does not claim HFP/HSP voice-audio support.
+The host-visible configuration still uses the legacy Bluetooth Controller two-interface shape:
+
+- interface 0 carries HCI command/event/ACL traffic; and
+- interface 1 alternate setting 0 has zero endpoints and represents zero active voice channels.
+
+V1 exposes no nonzero-bandwidth SCO alternate settings or usable Bluetooth voice isochronous endpoints. The WROOM controller is configured for zero synchronous BR/EDR connections. V1 does not claim HFP/HSP voice-audio support.
 
 Bluetooth Classic itself remains in scope. ACL-based Classic profiles, including representative HID and A2DP testing, are release targets.
 
@@ -35,9 +40,11 @@ Development builds currently use placeholder VID/PID `0xCAFE:0x4011`.
 
 This is a development identity only. A distributed production/release build must use a USB VID/PID the project is authorized to use. The project must not ship under another manufacturer's assigned identity without authorization.
 
+Production USB identity authorization has not yet been completed and remains a release/commercialization requirement.
+
 ## UART rate
 
-The initial shared HCI UART baud is **115200 baud**.
+The shared HCI UART software baseline is **115200 baud**.
 
 This is deliberately conservative. The final V1 value is not selected until physical RTS/CTS and sustained bidirectional traffic testing is complete. The S3 and WROOM use one shared configuration definition so they cannot intentionally diverge in source.
 
@@ -47,11 +54,18 @@ No final V1 throughput claim has been established. USB Full Speed, UART transpor
 
 Performance numbers must be measured on the assembled hardware rather than inferred from nominal Bluetooth PHY rates.
 
-## Development-board compatibility
+## Development-board status
 
-The reference GPIO assignment is documented, but the exact ESP32-S3 and ESP32-WROOM-32 development-board models for initial physical acceptance have not yet been recorded.
+The exact initial V1 development boards **are identified and approved for the reference pin contract**:
 
-Before hardware bring-up closes, verify that the selected S3 board exposes native USB and makes GPIO4-7 usable, and that the selected WROOM board exposes GPIO16/17/25/26 without board-specific conflicts.
+- AYWHP ESP32-S3-DevKitC-1-N16R8, ASIN `B0DG8L5NG5`.
+- Aideepen 30-pin ESP-WROOM-32, ASIN `B0BQJ8BTVB`.
+
+`docs/V1_BOARD_VERIFICATION.md` records the purchase-listing, prior-photo/USB-enumeration, and pin/native-USB evidence used to close V1-102.
+
+The remaining limitation is physical validation, not board identity: the five-wire interconnect, common ground, bidirectional UART, real RTS/CTS backpressure, and reset/boot behavior have not yet been exercised for this project checkpoint.
+
+If different development boards are substituted, their pin/native-USB compatibility must be rechecked.
 
 ## Host operating systems
 
@@ -60,6 +74,10 @@ The architecture targets standard Windows and Linux USB Bluetooth stacks, but fi
 ## Peripheral compatibility
 
 The final tested BLE, Classic HID, and Classic audio/ACL peripheral matrix remains to be populated from hardware acceptance runs.
+
+## Recovery and stability
+
+Real unplug/replug, host reboot, suspend/resume, S3/WROOM reset, queue-pressure, logging-load, and multi-hour stability behavior remain unqualified until device testing resumes.
 
 ## Wi-Fi
 
