@@ -30,10 +30,9 @@
 #define CONTROL_STAGE_ACK 2u
 
 #define TUD_CONFIG_DESCRIPTOR(_config_num, _itf_count, _stridx, _total_len, _attribute, _power_ma) \
-    9u, TUSB_DESC_CONFIGURATION, (uint8_t)((_total_len) & 0xffu),                            \
-        (uint8_t)(((_total_len) >> 8) & 0xffu), (uint8_t)(_itf_count),                       \
-        (uint8_t)(_config_num), (uint8_t)(_stridx), (uint8_t)(0x80u | (_attribute)),         \
-        (uint8_t)((_power_ma) / 2u)
+    9u, TUSB_DESC_CONFIGURATION, (uint8_t)((_total_len) & 0xffu),                                  \
+        (uint8_t)(((_total_len) >> 8) & 0xffu), (uint8_t)(_itf_count), (uint8_t)(_config_num),     \
+        (uint8_t)(_stridx), (uint8_t)(0x80u | (_attribute)), (uint8_t)((_power_ma) / 2u)
 
 typedef enum {
     XFER_RESULT_SUCCESS = 0,
