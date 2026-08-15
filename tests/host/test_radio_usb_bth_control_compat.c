@@ -16,8 +16,7 @@ extern usbd_class_driver_t const *usbd_app_driver_get_cb(uint8_t *driver_count);
 #define ACL_OUT_EP 0x02u
 #define ACL_IN_EP 0x82u
 #define FS_PACKET_SIZE 64u
-#define PRIMARY_DESCRIPTOR_LEN                                                                   \
-    (sizeof(tusb_desc_interface_t) + (3u * sizeof(tusb_desc_endpoint_t)))
+#define PRIMARY_DESCRIPTOR_LEN (sizeof(tusb_desc_interface_t) + (3u * sizeof(tusb_desc_endpoint_t)))
 
 typedef struct __attribute__((packed)) {
     tusb_desc_interface_t interface;
@@ -175,8 +174,7 @@ static const usbd_class_driver_t *get_driver(void) {
 static const usbd_class_driver_t *open_driver(void) {
     const usbd_class_driver_t *driver = get_driver();
     driver->init();
-    assert(driver->open(0u, &DESCRIPTORS.interface, sizeof(DESCRIPTORS)) ==
-           PRIMARY_DESCRIPTOR_LEN);
+    assert(driver->open(0u, &DESCRIPTORS.interface, sizeof(DESCRIPTORS)) == PRIMARY_DESCRIPTOR_LEN);
     assert(driver->open(0u, &DESCRIPTORS.sco_idle, sizeof(DESCRIPTORS.sco_idle)) ==
            sizeof(tusb_desc_interface_t));
     return driver;
@@ -189,8 +187,7 @@ static void test_empty_sco_interface_rules(void) {
     assert(driver->open(0u, &DESCRIPTORS.sco_idle, sizeof(DESCRIPTORS.sco_idle)) == 0u);
 
     driver->init();
-    assert(driver->open(0u, &DESCRIPTORS.interface, sizeof(DESCRIPTORS)) ==
-           PRIMARY_DESCRIPTOR_LEN);
+    assert(driver->open(0u, &DESCRIPTORS.interface, sizeof(DESCRIPTORS)) == PRIMARY_DESCRIPTOR_LEN);
 
     tusb_desc_interface_t bad = DESCRIPTORS.sco_idle;
     bad.bInterfaceNumber++;
