@@ -12,8 +12,7 @@ for cmake_file in "${production_projects[@]}"; do
     echo "error: production project imports development-only radio_uart_smoke: ${cmake_file}" >&2
     exit 1
   fi
-  if grep -Eq 'EXTRA_COMPONENT_DIRS[^
-]*["'"']\.\./components["'"']' "${cmake_file}"; then
+  if grep -Fq 'set(EXTRA_COMPONENT_DIRS "../components")' "${cmake_file}"; then
     echo "error: production project broadly imports all shared components: ${cmake_file}" >&2
     exit 1
   fi
