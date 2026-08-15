@@ -9,6 +9,8 @@ V1 uses these verified development boards for initial bring-up:
 
 Board-selection evidence and substitution caveats are recorded in `docs/V1_BOARD_VERIFICATION.md`.
 
+The electrical-design/preflight evidence for V1-103 is recorded in `docs/V1_ELECTRICAL_PREFLIGHT.md`.
+
 ## Prototype topology
 
 ```text
@@ -64,6 +66,22 @@ For the selected WROOM board, GPIO16, GPIO17, GPIO25, and GPIO26 are physically 
 
 This compatibility evidence approves the board/pin contract; it does **not** substitute for the deferred electrical/UART tests.
 
+## V1-103 electrical preflight result
+
+The datasheet/source audit for the direct GPIO link is complete:
+
+- both sides use nominal 3.3 V I/O domains;
+- the documented DC input/output levels are mutually compatible;
+- no level shifter is required while both boards are normally powered;
+- S3 GPIO4/5/6/7 are not ESP32-S3 strapping pins;
+- WROOM GPIO16/17/25/26 are not original-ESP32 strapping pins;
+- production firmware maps every driven signal output-to-input rather than output-to-output; and
+- both production paths enable hardware RTS/CTS.
+
+The detailed voltage-margin and pin audit is in `docs/V1_ELECTRICAL_PREFLIGHT.md`.
+
+The static preflight is **PASS**, but V1-103 remains open until the common-ground/power arrangement is actually observed on the physical boards.
+
 ## UART routing implementation note
 
 The WROOM firmware owns UART2 rather than depending on fixed HCI-UART pin defaults. It explicitly routes UART2 as:
@@ -77,19 +95,43 @@ CTS = GPIO25
 
 ESP32 GPIO Matrix routing makes the chosen CTS/RTS assignment valid even though GPIO25/26 are not inherently fixed UART2 flow-control pins.
 
+The S3 firmware explicitly routes UART1 as:
+
+```text
+TX  = GPIO4
+RX  = GPIO5
+RTS = GPIO6
+CTS = GPIO7
+```
+
 The WROOM Bluetooth controller is exposed to application bridge code through VHCI, while the application provides the external H4 UART transport. This lets the project enforce the reference pinout, bounded framing, queues, diagnostics, and recovery semantics.
 
 ## Prototype power
 
 For the two-development-board prototype:
 
-1. Power the ESP32-S3 development board from its own USB connection.
-2. Power the ESP32-WROOM-32 development board independently from its own USB connection during development.
+1. Give the ESP32-S3 development board one normal board power source.
+2. Give the ESP32-WROOM-32 development board one normal board power source.
 3. Connect the two board grounds.
 4. **Do not connect the two boards' regulated 3.3 V output rails together.**
-5. Connect only the HCI TX/RX/RTS/CTS signals and common ground shown above unless a later documented revision says otherwise.
+5. **Do not connect the two boards' 5 V/VBUS rails together merely to share a reference.**
+6. Connect only the HCI TX/RX/RTS/CTS signals and common ground shown above unless a later documented revision says otherwise.
+7. Do not simultaneously feed a development board from USB and a separate header power input unless that specific board documentation explicitly permits that arrangement.
 
-Both selected MCU boards use 3.3 V GPIO logic, so the reference UART connection does not require a logic-level translator.
+Both selected MCU boards use 3.3 V GPIO logic, so the reference UART connection does not require a logic-level translator while both boards are powered normally.
+
+### Important: do not drive an unpowered peer
+
+The direct GPIO link is **not** qualified for one MCU board being fully unpowered while the other board actively drives TX or RTS into it.
+
+GPIO DC limits are referenced to the receiving I/O-domain VDD. Therefore V1 prototype testing must not assume power-off tolerance merely because both boards use 3.3 V when powered.
+
+For the prototype:
+
+- keep both MCU boards powered whenever the four HCI signal wires are active;
+- normal MCU reset testing is acceptable while both boards remain powered;
+- do not use an asymmetric WROOM-first/S3-second cold-power sequence with active HCI signal wiring as an acceptance test; and
+- if future hardware must tolerate independent power removal with signals still attached, add and qualify explicit isolation/sequencing/protection.
 
 ## Development USB usage
 
@@ -102,11 +144,14 @@ PC USB #2 -> WROOM CP210x USB-UART     (development flash/log only)
 
 The WROOM USB-UART path is not part of the final Bluetooth data path. UART0 remains available for development flashing/logging where practical.
 
+When performing the first direct-GPIO electrical test, use a power arrangement that brings both boards into their normal powered state before exercising the HCI link. The detailed bench sequence is in `docs/V1_UART_BRINGUP.md`.
+
 ## Hardware validation still required
 
-Board identity and pin/native-USB compatibility are already verified. V1-G10 remains open only for the physical behavior that has intentionally been deferred:
+Board identity, pin/native-USB compatibility, and static electrical compatibility are already verified. V1-G10 remains open only for the physical behavior that has intentionally been deferred:
 
 - connect and verify common ground;
+- confirm the intended per-board power arrangement on the bench;
 - verify S3 -> WROOM UART traffic;
 - verify WROOM -> S3 UART traffic;
 - verify both RTS/CTS crossings assert, throttle, and release correctly;
