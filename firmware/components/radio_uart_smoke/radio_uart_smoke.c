@@ -239,8 +239,8 @@ static esp_err_t run_s3_to_wroom_flow_test(void) {
     }
 
     ESP_LOGI(TAG,
-             "PASS: WROOM RTS -> S3 CTS backpressure asserted/released; %u-byte payload drained in %"
-             PRIu32 " ms",
+             "PASS: WROOM RTS -> S3 CTS backpressure asserted/released; %u-byte payload drained in "
+             "%" PRIu32 " ms",
              SMOKE_FLOW_PAYLOAD_SIZE, elapsed_ms);
     return ESP_OK;
 }
@@ -282,8 +282,8 @@ static esp_err_t run_wroom_to_s3_flow_test(void) {
     }
 
     ESP_LOGI(TAG,
-             "PASS: S3 RTS -> WROOM CTS backpressure asserted/released; %u-byte payload drained in %"
-             PRIu32 " ms",
+             "PASS: S3 RTS -> WROOM CTS backpressure asserted/released; %u-byte payload drained in "
+             "%" PRIu32 " ms",
              SMOKE_FLOW_PAYLOAD_SIZE, elapsed_ms);
     return ESP_OK;
 }
@@ -310,17 +310,18 @@ static esp_err_t run_initiator(void) {
         if (round_err == ESP_OK) {
             ESP_LOGI(TAG, "BRINGUP PASS: round=%" PRIu32, round);
             if (round == 1u) {
-                ESP_LOGI(TAG,
-                         "RESET TEST READY: keep both boards powered; reset either MCU and require a "
-                         "later round PASS");
+                ESP_LOGI(
+                    TAG,
+                    "RESET TEST READY: keep both boards powered; reset either MCU and require a "
+                    "later round PASS");
             }
             round++;
             vTaskDelay(pdMS_TO_TICKS(SMOKE_ROUND_DELAY_MS));
             continue;
         }
 
-        ESP_LOGW(TAG, "ROUND %" PRIu32 " failed: %s; reinitializing UART and re-synchronizing", round,
-                 esp_err_to_name(round_err));
+        ESP_LOGW(TAG, "ROUND %" PRIu32 " failed: %s; reinitializing UART and re-synchronizing",
+                 round, esp_err_to_name(round_err));
         ESP_RETURN_ON_ERROR(recover_uart(), TAG, "recover UART after failed smoke-test round");
         vTaskDelay(pdMS_TO_TICKS(SMOKE_PEER_SYNC_DELAY_MS));
     }
@@ -412,7 +413,8 @@ static esp_err_t run_responder(void) {
                      "unknown/unaligned smoke-test command: %02x %02x %02x %02x; resetting UART "
                      "state",
                      command[0], command[1], command[2], command[3]);
-            ESP_RETURN_ON_ERROR(recover_uart(), TAG, "recover responder UART after unknown command");
+            ESP_RETURN_ON_ERROR(recover_uart(), TAG,
+                                "recover responder UART after unknown command");
             continue;
         }
 
