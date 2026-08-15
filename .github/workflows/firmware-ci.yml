@@ -36,6 +36,9 @@ jobs:
           path: clang-format.patch
           if-no-files-found: ignore
 
+      - name: Check release logging policy
+        run: bash scripts/check-release-logging.sh
+
       - name: Build H4 host tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic \
