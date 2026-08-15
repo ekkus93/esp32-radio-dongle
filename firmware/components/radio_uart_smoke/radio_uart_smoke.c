@@ -49,13 +49,16 @@
 
 static const char *TAG = "uart_smoke";
 
-static const uint8_t CMD_PING[4] = {'P', 'I', 'N', 'G'};
 static const uint8_t CMD_FLOW_A[4] = {'F', 'W', 'A', '1'};
 static const uint8_t CMD_FLOW_B[4] = {'F', 'W', 'B', '1'};
 static const uint8_t ACK_FLOW_A[4] = {'R', 'D', 'Y', '1'};
 static const uint8_t OK_FLOW_A[4] = {'O', 'K', 'A', '1'};
 static const uint8_t BAD_FLOW_A[4] = {'B', 'A', 'D', 'A'};
+#if SMOKE_ROLE_INITIATOR
 static const uint8_t OK_FLOW_B[4] = {'O', 'K', 'B', '1'};
+#else
+static const uint8_t CMD_PING[4] = {'P', 'I', 'N', 'G'};
+#endif
 
 static uint8_t payload_byte(size_t offset) { return (uint8_t)(((offset * 37u) + 0x5au) & 0xffu); }
 
