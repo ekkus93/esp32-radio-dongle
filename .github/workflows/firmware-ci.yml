@@ -52,6 +52,9 @@ jobs:
       - name: Check component boundary policy
         run: bash scripts/check-component-boundaries.sh
 
+      - name: Check electrical pin/direction contract
+        run: bash scripts/check-electrical-contract.sh
+
       - name: Build H4 host tests
         run: |
           cc -std=c11 -Wall -Wextra -Werror -pedantic \
