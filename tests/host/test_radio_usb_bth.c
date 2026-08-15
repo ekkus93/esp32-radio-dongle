@@ -187,12 +187,14 @@ bool usbd_open_edpt_pair(uint8_t rhport, const uint8_t *descriptor, uint8_t endp
     const tusb_desc_endpoint_t *first = (const tusb_desc_endpoint_t *)descriptor;
     const tusb_desc_endpoint_t *second =
         (const tusb_desc_endpoint_t *)((const uint8_t *)first + first->bLength);
-    if (first->bDescriptorType != TUSB_DESC_ENDPOINT || second->bDescriptorType != TUSB_DESC_ENDPOINT ||
+    if (first->bDescriptorType != TUSB_DESC_ENDPOINT ||
+        second->bDescriptorType != TUSB_DESC_ENDPOINT ||
         first->bmAttributes.xfer != TUSB_XFER_BULK || second->bmAttributes.xfer != TUSB_XFER_BULK) {
         return false;
     }
 
-    const tusb_desc_endpoint_t *out_ep = tu_edpt_dir(first->bEndpointAddress) == TUSB_DIR_OUT ? first : second;
+    const tusb_desc_endpoint_t *out_ep =
+        tu_edpt_dir(first->bEndpointAddress) == TUSB_DIR_OUT ? first : second;
     const tusb_desc_endpoint_t *in_ep = out_ep == first ? second : first;
     if (tu_edpt_dir(out_ep->bEndpointAddress) != TUSB_DIR_OUT ||
         tu_edpt_dir(in_ep->bEndpointAddress) != TUSB_DIR_IN) {
@@ -332,8 +334,7 @@ static void test_acl_out_reassembly(void) {
     assert(s_protocol_error_count == 0u);
 
     memcpy(s_acl_out_buffer, packet + FS_PACKET_SIZE, sizeof(packet) - FS_PACKET_SIZE);
-    assert(driver->xfer_cb(0u, ACL_OUT_EP, XFER_RESULT_SUCCESS,
-                           sizeof(packet) - FS_PACKET_SIZE));
+    assert(driver->xfer_cb(0u, ACL_OUT_EP, XFER_RESULT_SUCCESS, sizeof(packet) - FS_PACKET_SIZE));
     assert(s_acl_received_count == 1u);
     assert(s_acl_received_len == sizeof(packet));
     assert(memcmp(s_acl_received, packet, sizeof(packet)) == 0);
