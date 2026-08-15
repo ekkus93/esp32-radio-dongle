@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 
-set(EXTRA_COMPONENT_DIRS "../../components")
+set(EXTRA_COMPONENT_DIRS
+    "../../components/radio_h4"
+    "../../components/radio_uart_smoke"
+)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(esp32s3_uart_smoke)
 
