@@ -23,15 +23,17 @@ if grep -RInE \
 fi
 
 # Release overlays are part of the security/timing contract. Verify the source
-# files themselves retain the WARN-only maximum/default policy.
+# files retain the authoritative Kconfig choice symbols. ESP-IDF derives the
+# numeric WARN level from LOG_DEFAULT_LEVEL_WARN and makes the maximum equal to
+# that level when LOG_MAXIMUM_EQUALS_DEFAULT is selected.
 for release_config in \
   firmware/esp32_wroom_bt_controller/sdkconfig.release \
   firmware/esp32s3_usb_bridge/sdkconfig.release; do
   grep -qx 'CONFIG_LOG_DEFAULT_LEVEL_WARN=y' "${release_config}"
-  grep -qx 'CONFIG_LOG_DEFAULT_LEVEL=2' "${release_config}"
   grep -qx 'CONFIG_LOG_MAXIMUM_EQUALS_DEFAULT=y' "${release_config}"
-  grep -qx 'CONFIG_LOG_MAXIMUM_LEVEL=2' "${release_config}"
   grep -qx '# CONFIG_LOG_COLORS is not set' "${release_config}"
+  grep -qx 'CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y' "${release_config}"
+  grep -qx 'CONFIG_APP_REPRODUCIBLE_BUILD=y' "${release_config}"
 done
 
 echo "release logging policy passed"
