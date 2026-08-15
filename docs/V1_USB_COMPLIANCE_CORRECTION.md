@@ -1,19 +1,27 @@
 # V1 USB Bluetooth Compliance Correction
 
-This document records a normative correction to the original V1 specification and TODO wording.
+Status: **historical decision record; integrated into the canonical SPEC/TODO.**
+
+This document records the correction that moved V1 from the original one-interface planning assumption to the implemented legacy Bluetooth Controller two-interface USB layout.
+
+The current normative requirements are now written directly in:
+
+- `docs/ESP32_RADIO_DONGLE_V1_SPEC.md`;
+- `docs/ESP32_RADIO_DONGLE_V1_TODO.md`; and
+- `docs/USB_BLUETOOTH_V1.md`.
+
+This file remains to explain why that decision changed and to preserve implementation history.
 
 ## Reason for the correction
 
-The original planning documents described the S3 USB Bluetooth function as a single primary-controller interface. Review against the Bluetooth Core USB Transport Layer showed that the legacy Bluetooth Controller configuration uses two interfaces:
+The original planning documents described the S3 USB Bluetooth function as a single primary-controller interface. Review of the Bluetooth USB transport model showed that the legacy Bluetooth Controller configuration uses two interfaces:
 
 1. the primary HCI event/ACL interface; and
 2. the SCO bandwidth interface, whose default alternate setting represents zero active voice bandwidth.
 
-V1 still does **not** implement SCO/eSCO data transport. The correction is to expose and claim the second interface in its endpoint-free alternate setting 0, not to add fake or unusable voice endpoints.
+V1 still does **not** implement SCO/eSCO data transport. The correction was to expose and claim the second interface in its endpoint-free alternate setting 0, not to add fake or unusable voice endpoints.
 
-## Normative V1 USB layout
-
-The following supersedes any earlier V1 SPEC/TODO wording that says the configuration contains only one interface or a "single primary-controller interface descriptor."
+## Integrated V1 USB layout
 
 ### Device descriptor
 
@@ -43,7 +51,7 @@ The following supersedes any earlier V1 SPEC/TODO wording that says the configur
 - No usable isochronous SCO transport
 - No nonzero-bandwidth alternate settings in V1
 
-The project-owned TinyUSB class shim must claim this empty second interface after claiming the primary interface. It must reject nonzero alternate settings or endpoint-bearing SCO interface forms because V1 does not implement those transports.
+The project-owned TinyUSB class shim claims this empty second interface after claiming the primary interface and rejects endpoint-bearing/nonzero-bandwidth SCO forms because V1 does not implement those transports.
 
 ## HCI control-request compatibility
 
@@ -66,15 +74,8 @@ Host regression coverage:
 - `tests/host/test_radio_usb_bth.c`
 - `tests/host/test_radio_usb_bth_control_compat.c`
 
-The host tests validate the two-interface descriptor bytes, empty interface claim/rejection behavior, legacy HCI control-request compatibility, and the command/event/ACL transport logic.
+The host tests validate the two-interface descriptor bytes, empty-interface claim/rejection behavior, legacy HCI control-request compatibility, and command/event/ACL transport logic.
 
-## TODO interpretation
+## Acceptance status
 
-Until `ESP32_RADIO_DONGLE_V1_SPEC.md` and `ESP32_RADIO_DONGLE_V1_TODO.md` are mechanically rewritten, interpret their USB-interface requirements using this correction:
-
-- any requirement for a "single primary-controller interface" is **superseded**;
-- V1-402 requires the two-interface layout above;
-- V1-404 must inspect both interfaces on a physical host when device tests resume; and
-- V1-505 remains unchanged: SCO/eSCO data transport is intentionally unsupported in V1.
-
-This correction does not close V1-404 or any Windows/Linux device acceptance gate. Physical USB enumeration and driver binding remain deferred.
+This correction is complete at the source/host-test level. It does not close V1-404 or any Windows/Linux device acceptance gate. Physical USB enumeration, driver binding, and interoperability remain deferred device tests.
