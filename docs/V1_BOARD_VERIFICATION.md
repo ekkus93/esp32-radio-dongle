@@ -2,7 +2,7 @@
 
 This document records the board-level evidence for V1-102 of `ESP32_RADIO_DONGLE_V1_TODO.md`.
 
-V1-102 is complete only after the exact two development boards used for bring-up are identified and checked against the reference pinout. The compatibility results below establish known-good reference boards and known conflicts; they do not substitute for identifying the physical boards in hand.
+V1-102 is complete: the two development boards selected for V1 bring-up were already identified by the project owner through the exact purchase listings, prior board photographs, and prior USB-enumeration evidence. The reference GPIO/native-USB requirements have been checked against those boards.
 
 ## Reference interconnect
 
@@ -16,84 +16,127 @@ V1-102 is complete only after the exact two development boards used for bring-up
 
 TX/RX and RTS/CTS cross between the two endpoints.
 
-## ESP32-S3 reference-board compatibility
+## Selected ESP32-S3 board
 
-### ESP32-S3-DevKitC-1: compatible with the current pin assignment
+### Board identity
 
-Espressif's ESP32-S3-DevKitC-1 documentation shows:
+The V1 ESP32-S3 board is the AYWHP ESP32-S3-DevKitC-1-N16R8 development board purchased from:
 
-- GPIO4, GPIO5, GPIO6, and GPIO7 are broken out on header J1 as general-purpose I/O.
-- The board provides a separate `ESP32-S3 USB Port`, which is the ESP32-S3 full-speed USB OTG interface.
-- GPIO19 and GPIO20 are the S3 USB D- and D+ signals; the dedicated USB connector handles them, so the HCI GPIO4-7 assignment does not collide with USB.
-- Board variants may differ in flash/PSRAM and RGB-LED wiring, but the documented GPIO4-7 header positions remain available on the DevKitC-1 family.
+- https://www.amazon.com/dp/B0DG8L5NG5
+- ASIN: `B0DG8L5NG5`
+- Product family: ESP32-S3-DevKitC-1 / ESP32-S3-WROOM-1
+- Flash/PSRAM variant: N16R8
+- Development-board USB connectors: dual USB Type-C
+
+Prior Linux enumeration supplied by the project owner for this physical S3 board was:
+
+```text
+Bus 001 Device 008: ID 303a:4001 ESP32 Macro Keyboard Project ESP32 Macro Keyboard
+```
+
+That prior custom USB-device enumeration is direct project evidence that the board exposes a working ESP32-S3 native USB device path rather than only a USB-UART bridge.
+
+### GPIO/native-USB compatibility
+
+Espressif's ESP32-S3-DevKitC-1 documentation establishes that:
+
+- GPIO4, GPIO5, GPIO6, and GPIO7 are broken out consecutively on header J1 as general-purpose I/O.
+- GPIO19 and GPIO20 are the native USB D- and D+ signals.
+- The board design provides a separate ESP32-S3 full-speed USB OTG/device connection.
+- GPIO4-7 therefore do not collide with the native USB D-/D+ signals used by V1.
 
 Official reference:
 
 - https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/
 
-For V1, the host-facing cable must use the native ESP32-S3 USB/OTG connector, not merely the USB-to-UART bridge connector.
+### V1 result
 
-### ESP32-S3-USB-OTG: conflicts with the current GPIO4-7 assignment
+The selected ESP32-S3 board satisfies the V1 pin and native-USB requirements:
 
-Espressif's ESP32-S3-USB-OTG board uses the four proposed HCI pins for its onboard LCD:
+- GPIO4: available for HCI TX.
+- GPIO5: available for HCI RX.
+- GPIO6: available for HCI RTS.
+- GPIO7: available for HCI CTS.
+- Native USB device path: available and previously exercised by project firmware.
+
+## Selected ESP32-WROOM-32 board
+
+### Board identity
+
+The V1 original-ESP32 board is the Aideepen 30-pin ESP-WROOM-32 development board purchased from:
+
+- https://www.amazon.com/dp/B0BQJ8BTVB
+- ASIN: `B0BQJ8BTVB`
+- Product family: ESP-WROOM-32 / ESP32S 30-pin development board
+- USB interface: Micro-USB through onboard CP2102 USB-to-UART bridge
+
+Prior Linux enumeration supplied by the project owner for this physical WROOM board was:
+
+```text
+Bus 001 Device 010: ID 10c4:ea60 Silicon Labs CP210x UART Bridge
+```
+
+The CP210x identity is consistent with the selected listing's CP2102 USB-UART bridge. This USB connector remains a flashing/debugging path only; it is not the V1 host-facing Bluetooth USB connection.
+
+### GPIO compatibility
+
+The selected board uses the standard 30-pin ESP-WROOM-32 development-board layout represented in the product listing and prior project photographs. The required signals are physically broken out:
+
+- GPIO16 / RX2
+- GPIO17 / TX2
+- GPIO25
+- GPIO26
+
+The underlying ESP-WROOM-32 module exposes GPIO16 and GPIO17 as UART2 RX/TX-capable GPIOs and GPIO25/GPIO26 as normal bidirectional GPIOs. This is a WROOM board, not a WROVER variant, so the WROVER-specific GPIO16/17 reservation does not apply.
+
+Official module/reference-board references:
+
+- https://documentation.espressif.com/esp32-wroom-32_datasheet_en.html
+- https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html
+
+### V1 result
+
+The selected ESP32-WROOM-32 board satisfies the V1 inter-MCU pin requirements:
+
+- GPIO16: available for HCI RX.
+- GPIO17: available for HCI TX.
+- GPIO25: available for HCI CTS.
+- GPIO26: available for HCI RTS.
+- UART0/CP2102 path remains separate for flashing and development logging.
+
+## Reference-board conflict notes
+
+These notes remain useful if the project later substitutes hardware.
+
+### ESP32-S3-USB-OTG
+
+Espressif's ESP32-S3-USB-OTG board is **not** a drop-in match for the current GPIO4-7 assignment because it uses those pins for its onboard LCD:
 
 - GPIO4: LCD data/command
 - GPIO5: LCD enable
 - GPIO6: LCD SPI clock
 - GPIO7: LCD SPI MOSI
 
-Therefore this board is not a clean match for the current V1 reference pinout unless those onboard functions are intentionally disabled/reworked or the inter-MCU pin assignment is revised.
-
-Official reference:
+Reference:
 
 - https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-usb-otg/user_guide.html
 
-## ESP32-WROOM-32 reference-board compatibility
+### ESP32-WROVER variants
 
-### ESP32-DevKitC V4 with an ESP32-WROOM module: compatible
+WROVER-equipped original-ESP32 boards are **not** a drop-in match for the current GPIO16/17 assignment because those pins are reserved for internal use on WROVER variants. The selected V1 board is ESP-WROOM-32, so this restriction does not apply.
 
-Espressif's ESP32-DevKitC V4 documentation shows:
+## V1-102 disposition
 
-- GPIO25 and GPIO26 are exposed on header J2.
-- GPIO17 and GPIO16 are exposed on header J3 when the board is populated with an ESP32-WROOM or ESP32-SOLO-1 module.
-- The board's USB connector is a USB-to-UART path; it is for WROOM flashing/logging in this project, not the final Bluetooth host connection.
+**V1-102: PASS.**
 
-Official reference:
+Evidence used:
 
-- https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html
+1. Exact project-owner purchase listing for the S3 board: ASIN `B0DG8L5NG5`.
+2. Exact project-owner purchase listing for the WROOM board: ASIN `B0BQJ8BTVB`.
+3. Prior physical-board photographs supplied by the project owner.
+4. Prior S3 Linux USB enumeration as `303a:4001` running a project USB device firmware.
+5. Prior WROOM Linux enumeration as Silicon Labs CP210x `10c4:ea60`.
+6. Espressif ESP32-S3-DevKitC-1 GPIO/native-USB documentation.
+7. Espressif ESP-WROOM-32/DevKitC GPIO documentation.
 
-### ESP32-DevKitC V4 with an ESP32-WROVER module: incompatible with the current pin assignment
-
-Espressif explicitly documents GPIO16 and GPIO17 as reserved for internal use on WROVER-equipped DevKitC variants. A WROVER board therefore does not satisfy the current V1 WROOM-side pin contract without changing pins.
-
-## Evidence required from the physical boards
-
-Record all of the following before checking V1-102 complete:
-
-### ESP32-S3 board
-
-1. Board product/model printed on the PCB, if present.
-2. Module marking printed on the RF module can, for example `ESP32-S3-WROOM-1-N8R8`.
-3. Board revision, if printed.
-4. Confirmation that GPIO4, GPIO5, GPIO6, and GPIO7 are physically exposed and not dedicated to unavoidable onboard peripherals.
-5. Identification of the connector wired to the S3 native USB D+/D- interface.
-
-### ESP32-WROOM-32 board
-
-1. Board product/model printed on the PCB, if present.
-2. Module marking printed on the RF module can; it must be a WROOM-family part for the current GPIO16/17 assumption.
-3. Board revision, if printed.
-4. Confirmation that GPIO16, GPIO17, GPIO25, and GPIO26 are physically exposed.
-
-For an unbranded/generic clone, photographs of the front and back plus a readable module-can marking are sufficient evidence to identify the relevant electrical layout. Do not infer compatibility from the ESP32 chip name alone.
-
-## V1-102 current status
-
-- Reference ESP32-S3-DevKitC-1 compatibility: **verified from Espressif documentation**.
-- Reference ESP32-DevKitC V4 + WROOM compatibility: **verified from Espressif documentation**.
-- ESP32-S3-USB-OTG GPIO4-7 conflict: **verified from Espressif documentation**.
-- WROVER GPIO16/17 conflict: **verified from Espressif documentation**.
-- Exact ESP32-S3 development board used for bring-up: **not yet identified**.
-- Exact ESP32-WROOM-32 development board used for bring-up: **not yet identified**.
-
-V1-102 remains open until the last two items are resolved and the corresponding pin/access checks are recorded.
+No additional physical test is required merely to identify or approve the selected boards. Device testing is still required for V1-103/V1-104 and later electrical, HCI, USB-enumeration, and operating-system acceptance gates.
