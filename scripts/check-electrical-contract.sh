@@ -42,6 +42,16 @@ for line in \
 done
 grep -Fq '.flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS' "$smoke"
 
+# V1-104 smoke acceptance must read back flow-control configuration, repeat
+# complete rounds, and explicitly support post-reset re-synchronization.
+grep -Fq 'uart_get_hw_flow_ctrl(SMOKE_UART, &flow_ctrl)' "$smoke"
+grep -Fq 'flow_ctrl != UART_HW_FLOWCTRL_CTS_RTS' "$smoke"
+grep -Fq 'run_initiator_round(round)' "$smoke"
+grep -Fq 'RESET TEST READY: keep both boards powered; reset either MCU and require a ' "$smoke"
+grep -Fq 'recover_uart()' "$smoke"
+grep -Fq 'SMOKE_MIN_EXPECTED_BLOCK_MS 350' "$smoke"
+grep -Fq 'payload_matches(payload, sizeof(payload))' "$smoke"
+
 # Pin choices intentionally avoid documented strapping pins.
 s3_link=(4 5 6 7)
 s3_straps=(0 3 45 46)
@@ -66,4 +76,4 @@ for link_pin in "${wroom_link[@]}"; do
   done
 done
 
-echo "electrical pin/direction contract passed"
+echo "electrical pin/direction and V1-104 smoke-test contract passed"
