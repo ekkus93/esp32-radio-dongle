@@ -90,3 +90,65 @@ jobs:
           name: firmware-build-log-${{ matrix.artifact_suffix }}
           path: ${{ matrix.path }}/ci-build.log
           if-no-files-found: error
+
+  release-build:
+    name: Release build ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ESP32-WROOM-32 controller
+            target: esp32
+            path: firmware/esp32_wroom_bt_controller
+            artifact_suffix: esp32-controller
+          - name: ESP32-S3 USB bridge
+            target: esp32s3
+            path: firmware/esp32s3_usb_bridge
+            artifact_suffix: esp32s3-bridge
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build release profile with ESP-IDF v5.5.5
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.5
+          target: ${{ matrix.target }}
+          path: ${{ matrix.path }}
+          command: >-
+            set -euo pipefail;
+            rm -f sdkconfig;
+            SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.release" idf.py build 2>&1 | tee ci-release-build.log;
+            grep -qx 'CONFIG_LOG_DEFAULT_LEVEL_WARN=y' sdkconfig;
+            grep -qx 'CONFIG_LOG_DEFAULT_LEVEL=2' sdkconfig;
+            grep -qx 'CONFIG_LOG_MAXIMUM_EQUALS_DEFAULT=y' sdkconfig;
+            grep -qx 'CONFIG_LOG_MAXIMUM_LEVEL=2' sdkconfig;
+            grep -qx '# CONFIG_LOG_COLORS is not set' sdkconfig;
+            grep -qx 'CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y' sdkconfig;
+            grep -qx 'CONFIG_APP_REPRODUCIBLE_BUILD=y' sdkconfig;
+            cd build;
+            find . -type f -name '*.bin' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+
+      - name: Upload failed release build log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-build-log-${{ matrix.artifact_suffix }}
+          path: ${{ matrix.path }}/ci-release-build.log
+          if-no-files-found: error
+
+      - name: Upload release flash inputs
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v1-release-${{ matrix.artifact_suffix }}-${{ github.sha }}
+          path: |
+            ${{ matrix.path }}/build/*.bin
+            ${{ matrix.path }}/build/bootloader/*.bin
+            ${{ matrix.path }}/build/partition_table/*.bin
+            ${{ matrix.path }}/build/flash_args
+            ${{ matrix.path }}/build/flasher_args.json
+            ${{ matrix.path }}/build/SHA256SUMS.txt
+          if-no-files-found: error
