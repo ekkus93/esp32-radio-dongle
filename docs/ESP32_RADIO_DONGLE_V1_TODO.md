@@ -15,16 +15,20 @@ Do not mark hardware or host acceptance complete from source code or CI alone.
 
 ## Current evidence checkpoint
 
-Software-only baseline evidence as of 2026-08-14:
+Software-only checkpoint as of 2026-08-15:
 
 - ESP-IDF is pinned to **v5.5.5** for both targets.
-- GitHub Actions run **31851995899**, commit `dca38e95ec4ff110a8e244037984d23c0dd2dfe6`, passed:
+- GitHub Actions run **31873127842**, commit `57864e9e83b5760c70fbff2e3b5f1ab1cfbe174e`, passed:
   - C formatting validation;
-  - strict host H4 compile/test;
-  - clean ESP32-WROOM-32 firmware build; and
-  - clean ESP32-S3 firmware build.
-- The subsequent WROOM change only removes the unused SCO data-path setup from a configuration where synchronous connections are already disabled.
-- Static security/failure-semantics evidence is in `docs/V1_SECURITY_REVIEW.md`.
+  - release-logging and component-boundary policy checks;
+  - strict host H4 tests;
+  - production USB Bluetooth class/control-compatibility/descriptor host tests;
+  - clean ESP32-WROOM-32 production firmware build;
+  - clean ESP32-S3 production firmware build;
+  - both dedicated UART smoke-image builds; and
+  - both WARN-only production release-profile builds with commit-addressed flash-input artifacts.
+- The USB Bluetooth descriptor implementation uses the corrected two-interface legacy Controller layout documented in `docs/V1_USB_COMPLIANCE_CORRECTION.md`.
+- Static security/failure-semantics and release-configuration evidence is indexed in `docs/V1_EVIDENCE_INDEX.md`.
 - Hardware wiring/electrical tests and Windows/Linux driverless acceptance have **not** yet been performed and remain open.
 
 ---
@@ -200,12 +204,14 @@ Software-only baseline evidence as of 2026-08-14:
 
 - [x] **V1-402 — Implement USB Bluetooth descriptor/transport set**
   - [x] Use standard Bluetooth Wireless Controller E0/01/01 identity.
-  - [x] Implement the single primary-controller interface descriptor.
-  - [x] Implement HCI command class control transfers.
+  - [x] Implement the standard two-interface legacy Bluetooth Controller configuration.
+  - [x] Interface 0 alternate setting 0 carries the primary HCI transport with 3 endpoints: event IN, ACL OUT, and ACL IN.
+  - [x] Interface 1 alternate setting 0 is E0/01/01 with 0 endpoints and represents zero active voice channels.
+  - [x] Implement HCI command class control transfers, including legacy single-function device-targeted request compatibility.
   - [x] Implement interrupt IN for HCI events.
   - [x] Implement bulk OUT for host-to-controller ACL.
   - [x] Implement bulk IN for controller-to-host ACL, including transfer termination handling.
-  - [x] Do not advertise isochronous endpoints because SCO/eSCO is explicitly outside V1 scope.
+  - [x] Do not advertise nonzero-bandwidth SCO alternate settings or isochronous endpoints because SCO/eSCO is explicitly outside V1 scope.
 
 - [x] **V1-403 — Define USB identity strategy**
   - [x] Define development manufacturer/product strings.
@@ -435,12 +441,13 @@ Software-only baseline evidence as of 2026-08-14:
   - [x] Corrupt H4 frames fail closed rather than being silently skipped mid-frame.
   - [x] Development recovery/error reasons and counters are diagnosable.
 
-- [ ] **V1-1104 — Release configuration review**
-  - [ ] Reduce verbose diagnostics not intended for release.
-  - [ ] Confirm release logging does not expose pairing/security material unnecessarily.
-  - [ ] Confirm development-only interfaces are documented/disabled as intended.
+- [x] **V1-1104 — Release configuration review**
+  - [x] Reduce verbose diagnostics not intended for release through WARN-only default/maximum logging configuration.
+  - [x] Confirm release logging policy does not expose pairing/security material unnecessarily.
+  - [x] Confirm development-only interfaces are documented/disabled as intended.
+  - [x] Validate both production release profiles and upload hashed commit-addressed flash inputs in CI.
 
-**Gate V1-G110: OPEN — static review passed; final release configuration/logging audit remains.**
+**Gate V1-G110: PASS for software configuration.** Release-profile CI and static policy review pass; V1-904 remains open for the physical timing/load audit under sustained traffic.
 
 ---
 
