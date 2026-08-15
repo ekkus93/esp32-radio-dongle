@@ -53,9 +53,7 @@ Preferred bench arrangement:
 3. Use one switched hub/power control to energize both development-board USB feeds together.
 4. Confirm both boards reach their normal smoke-firmware startup state before beginning the test.
 
-If a common switched USB source is not available, do not intentionally leave a fully booted peer driving an unpowered board. Use a bench arrangement that keeps both boards normally powered before the direct HCI GPIO link is exercised.
-
-The previous procedure's deliberate WROOM-first/S3-second cold-power test is no longer part of V1 acceptance because the GPIO interface is not being claimed as power-off tolerant.
+If a common switched USB source is not available, use a bench arrangement that keeps both boards normally powered before the direct HCI GPIO link is exercised. Do not intentionally leave a fully booted peer driving an unpowered board.
 
 ## 2. Flash the dedicated WROOM smoke image
 
@@ -75,9 +73,11 @@ Expected WROOM log after boot:
 
 ```text
 V1-103/V1-104 ESP32-WROOM UART/RTS/CTS bring-up image
-WROOM responder: UART=2 baud=115200 TX=17 RX=16 RTS=26 CTS=25
+WROOM responder: UART=2 baud=115200 TX=17 RX=16 RTS=26 CTS=25 flow=CTS_RTS threshold=96
 READY: waiting for ESP32-S3 smoke-test initiator
 ```
+
+The smoke firmware reads the configured UART hardware-flow-control mode back through the ESP-IDF UART driver and fails before testing if it is not `UART_HW_FLOWCTRL_CTS_RTS`.
 
 Leave the WROOM powered and its monitor running.
 
@@ -93,11 +93,17 @@ idf.py build
 idf.py -p <S3_DEBUG_SERIAL_PORT> flash monitor
 ```
 
-For an S3 development board with separate USB-to-UART and native USB connectors, use the normal flashing/debug connector for this smoke-test log. The native USB device connector is not needed until V1-404/V1-601.
+For an S3 development board with separate USB-to-UART and native USB connectors, use the normal flashing/debug connector for this smoke-test log. The native USB Bluetooth connector is not needed until V1-404/V1-601.
 
-## 4. What the automated smoke test proves
+Expected S3 configuration log includes:
 
-The S3 initiator performs three phases.
+```text
+S3 initiator: UART=1 baud=115200 TX=4 RX=5 RTS=6 CTS=7 flow=CTS_RTS threshold=96
+```
+
+## 4. What one automated round proves
+
+The S3 initiator repeatedly executes complete test rounds. A round has three phases.
 
 ### Phase A — bidirectional TX/RX
 
@@ -118,12 +124,12 @@ PASS: 32 bidirectional ping/echo frames
 
 The WROOM acknowledges the phase, deliberately pauses its UART RX interrupt for 600 ms, and then receives a 1024-byte deterministic payload from the S3.
 
-With hardware flow control working, the WROOM RX FIFO reaches its configured RTS threshold, WROOM RTS throttles the S3 CTS-controlled transmitter, and the S3's transmit-drain wait stretches for hundreds of milliseconds. After RX resumes, all bytes must arrive intact.
+With hardware flow control working, the WROOM RX FIFO reaches its configured RTS threshold, WROOM RTS throttles the S3 CTS-controlled transmitter, and the S3's transmit-drain wait stretches for hundreds of milliseconds. After RX resumes, all bytes must arrive intact. Successful completion therefore proves both **assertion** and subsequent **release/resume** of backpressure.
 
 Expected S3 log:
 
 ```text
-PASS: WROOM RTS -> S3 CTS backpressure, 1024-byte payload drained in <N> ms
+PASS: WROOM RTS -> S3 CTS backpressure asserted/released; 1024-byte payload drained in <N> ms
 ```
 
 The automated threshold requires the measured drain time to be at least 350 ms.
@@ -135,49 +141,94 @@ The reverse test deliberately pauses S3 UART RX for 600 ms while the WROOM sends
 Expected S3 log:
 
 ```text
-PASS: S3 RTS -> WROOM CTS backpressure, 1024-byte payload drained in <N> ms
-BRINGUP PASS: TX/RX and both RTS/CTS crossings are functional
+PASS: S3 RTS -> WROOM CTS backpressure asserted/released; 1024-byte payload drained in <N> ms
 ```
 
-The automated threshold again requires at least 350 ms of measured drain time.
+The automated threshold again requires at least 350 ms.
 
-## 5. Required V1-103/V1-104 evidence
+### Complete-round result
 
-Copy or photograph the following into the bring-up record before marking the tasks complete:
+After all three phases pass:
 
-1. Exact ESP32-S3 board/module identification.
-2. Exact ESP32-WROOM-32 board/module identification.
-3. Photograph or wiring record showing all five interconnects.
-4. Confirmation that each board used one intended power source and no 3.3 V or 5 V rails were tied board-to-board.
-5. Confirmation that both boards were normally powered while the direct HCI GPIO link was active.
-6. Description of the common/safe power-up method used.
-7. WROOM boot log showing its UART pin configuration and `READY` state.
-8. S3 log showing all three `PASS` phases and final `BRINGUP PASS`.
-9. The two measured RTS/CTS drain times.
-10. Reset/boot test results described below.
+```text
+ROUND <N> PASS: TX/RX and both RTS/CTS crossings asserted, throttled, released, and resumed
+BRINGUP PASS: round=<N>
+```
 
-## 6. Reset / boot-strap conflict check
+After round 1 the S3 additionally prints:
 
-After the first full pass, leave both boards powered and leave the five interconnect wires installed.
+```text
+RESET TEST READY: keep both boards powered; reset either MCU and require a later round PASS
+```
 
-Run these checks:
+The test then waits briefly and starts another full round. It does not stop after the first PASS.
 
-1. Press/reset the WROOM five times while the S3 remains powered.
-2. Press/reset the S3 five times while the WROOM remains powered.
-3. Verify each reset uses the board reset/EN mechanism; do not remove power from one MCU while the peer remains powered and driving the HCI wires.
-4. Power **both boards down together**, then power **both boards up together** five times using the same safe/common power method used for initial bring-up.
-5. Verify each board reaches its normal smoke-test startup log on every cycle.
-6. Re-run at least one complete smoke-test pass after the reset sequence.
+## 5. Reset/re-synchronization behavior
 
-Record any boot-loop, ROM-download-mode entry, UART garbage, or failure to reach the smoke-test application. Any such event keeps V1-104 open until understood.
+The V1-104 harness is intentionally tolerant of a peer reset while both boards remain powered:
 
-### Independent full power removal is a separate requirement
+- failed synchronization attempts reset/reinitialize the local UART driver before retrying;
+- the WROOM responder resets/reinitializes its UART state after an incomplete phase or unaligned command;
+- the S3 keeps attempting complete rounds rather than stopping after a transient failure; and
+- a reset is accepted only when a **later complete round PASS** is observed.
+
+This makes reset acceptance stronger than merely observing that a boot banner returned.
+
+## 6. Required V1-103/V1-104 evidence
+
+Copy or photograph the following into `docs/V1_UART_BRINGUP_EVIDENCE.md` before marking the tasks complete:
+
+1. Photograph or wiring record showing all five interconnects.
+2. Confirmation that each board used one intended power source and no 3.3 V or 5 V rails were tied board-to-board.
+3. Confirmation that both boards were normally powered while the direct HCI GPIO link was active.
+4. Description of the common/safe power-up method used.
+5. WROOM boot log showing its UART pin configuration, `flow=CTS_RTS`, and `READY` state.
+6. S3 configuration log showing `flow=CTS_RTS`.
+7. S3 round log showing Phase A, Phase B, Phase C, and a complete round PASS.
+8. The two measured RTS/CTS drain times.
+9. Reset/re-synchronization results described below.
+
+V1-102 already records the exact board identities, so the hardware test does not need to rediscover them.
+
+## 7. Reset / boot-strap conflict check
+
+After the first full round passes, leave both boards powered and leave the five interconnect wires installed.
+
+### WROOM reset test
+
+For five cycles:
+
+1. Note the most recent successful S3 round number.
+2. Press the WROOM reset/EN button once while the S3 remains powered.
+3. Confirm the WROOM boots normally and returns to `READY`/responder operation.
+4. Confirm the S3 re-synchronizes automatically.
+5. Require a **new complete `ROUND <N> PASS`** after the reset.
+
+Do not count a cycle merely because the WROOM booted; the post-reset full round is the functional acceptance evidence.
+
+### S3 reset test
+
+For five cycles:
+
+1. Leave the WROOM powered and in responder mode.
+2. Press the S3 reset/EN button once.
+3. Confirm the S3 boots normally and reconfigures UART with `flow=CTS_RTS`.
+4. Confirm it synchronizes with the still-running WROOM.
+5. Require a complete round PASS after the reset.
+
+### Common cold-power cycles
+
+Power both boards down together and bring both boards back to normal power together using the same safe/common power method used for initial bring-up. Repeat five times. Each cycle must reach a complete round PASS.
+
+Record any boot-loop, ROM-download-mode entry, persistent synchronization failure, UART configuration mismatch, corrupted payload, or failure to reach a later complete round. Any such event keeps V1-104 open until understood.
+
+### Independent full power removal is a separate condition
 
 V1-G10 does not claim that one raw ESP32 GPIO endpoint may remain driven while the other MCU's I/O domain is unpowered. If later acceptance requires physically removing power from one board while the other remains active and wired, first define/qualify isolation or sequencing hardware for that condition.
 
 A reset with VDD still present is not the same electrical condition as removing board power.
 
-## 7. Optional logic-analyzer confirmation
+## 8. Optional logic-analyzer confirmation
 
 The automated test provides functional RTS/CTS evidence. If a logic analyzer or oscilloscope is available, a stronger trace can be captured on:
 
@@ -188,7 +239,7 @@ The trace should show the receiver's RTS changing state during the deliberate RX
 
 This trace is useful evidence but is not required if the automated timing and payload-integrity checks pass consistently.
 
-## 8. Failure interpretation
+## 9. Failure interpretation
 
 ### S3 never synchronizes with WROOM
 
@@ -199,8 +250,9 @@ Check, in order:
 3. TX/RX crossing (GPIO4 -> GPIO16 and GPIO17 -> GPIO5);
 4. RTS/CTS crossing (GPIO6 -> GPIO25 and GPIO26 -> GPIO7);
 5. both images are the dedicated smoke-test builds;
-6. both images use the shared 115200-baud configuration;
-7. exact board variants and pin accessibility from `V1_BOARD_VERIFICATION.md`.
+6. both startup logs report `flow=CTS_RTS`;
+7. both images use the shared 115200-baud configuration;
+8. exact board variants and pin accessibility from `V1_BOARD_VERIFICATION.md`.
 
 ### Ping passes but Phase B fails
 
@@ -218,7 +270,11 @@ Treat this as a real flow-control failure. Do not increase baud rate and do not 
 
 The data path may be working while hardware backpressure is not actually being exercised. Verify the RTS/CTS wires and exact board pin mappings before changing the test threshold.
 
-## 9. Restoring production firmware
+### A reset boots but no later round passes
+
+This is a V1-104 failure, not a successful reset cycle. Preserve both serial logs around the failure. Determine whether the issue is stale TX/RX state, CTS/RTS state, pin initialization, or peer restart timing before accepting the cycle.
+
+## 10. Restoring production firmware
 
 The smoke-test images are bring-up tools only. After V1-103/V1-104 passes, reflash:
 
