@@ -218,7 +218,8 @@ static uint16_t class_open(uint8_t rhport, const tusb_desc_interface_t *interfac
         return sizeof(tusb_desc_interface_t);
     }
 
-    if (s_state.opened || interface->bNumEndpoints != 3u || max_len < RADIO_USB_BTH_PRIMARY_DESC_LEN) {
+    if (s_state.opened || interface->bNumEndpoints != 3u ||
+        max_len < RADIO_USB_BTH_PRIMARY_DESC_LEN) {
         return 0u;
     }
 
