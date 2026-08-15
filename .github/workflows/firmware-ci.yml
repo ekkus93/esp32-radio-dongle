@@ -4,7 +4,17 @@ on:
   push:
     branches:
       - master
+    paths:
+      - firmware/**
+      - tests/**
+      - scripts/**
+      - .github/workflows/firmware-ci.yml
   pull_request:
+    paths:
+      - firmware/**
+      - tests/**
+      - scripts/**
+      - .github/workflows/firmware-ci.yml
 
 permissions:
   contents: read
