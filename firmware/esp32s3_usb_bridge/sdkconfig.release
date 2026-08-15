@@ -1,0 +1,18 @@
+# ESP32 Radio Dongle V1 release overlay.
+# Apply after sdkconfig.defaults via SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.release".
+
+# Release images retain actionable WARN/ERROR diagnostics but compile out
+# INFO/DEBUG/VERBOSE logging so packet counters/state chatter cannot affect the
+# steady-state transport path.
+CONFIG_LOG_DEFAULT_LEVEL_WARN=y
+CONFIG_LOG_DEFAULT_LEVEL=2
+CONFIG_LOG_MAXIMUM_EQUALS_DEFAULT=y
+CONFIG_LOG_MAXIMUM_LEVEL=2
+# CONFIG_LOG_COLORS is not set
+
+# Keep boot output concise while preserving warnings and fatal diagnostics.
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
+CONFIG_BOOTLOADER_LOG_LEVEL=2
+
+# Ask ESP-IDF to avoid non-deterministic build metadata where supported.
+CONFIG_APP_REPRODUCIBLE_BUILD=y
