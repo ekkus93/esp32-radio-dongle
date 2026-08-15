@@ -60,27 +60,40 @@ Wiring photograph/reference:
 - ESP-IDF version: v5.5.5
 - UART baud: 115200
 
-## WROOM startup evidence
+## UART configuration readback
 
-Expected key lines:
-
-```text
-V1-103/V1-104 ESP32-WROOM UART/RTS/CTS bring-up image
-WROOM responder: UART=2 baud=115200 TX=17 RX=16 RTS=26 CTS=25
-READY: waiting for ESP32-S3 smoke-test initiator
-```
-
-Observed log:
+Expected WROOM configuration line:
 
 ```text
-PASTE WROOM LOG HERE
+WROOM responder: UART=2 baud=115200 TX=17 RX=16 RTS=26 CTS=25 flow=CTS_RTS threshold=96
 ```
 
-- [ ] WROOM startup PASS.
+Expected S3 configuration line:
 
-## S3 bidirectional TX/RX evidence
+```text
+S3 initiator: UART=1 baud=115200 TX=4 RX=5 RTS=6 CTS=7 flow=CTS_RTS threshold=96
+```
 
-Observed log:
+Observed WROOM line:
+
+```text
+PASTE WROOM CONFIGURATION LINE HERE
+```
+
+Observed S3 line:
+
+```text
+PASTE S3 CONFIGURATION LINE HERE
+```
+
+- [ ] WROOM reports `flow=CTS_RTS`.
+- [ ] S3 reports `flow=CTS_RTS`.
+
+## Initial complete round
+
+### Bidirectional TX/RX evidence
+
+Observed S3 log:
 
 ```text
 PASTE S3 PING/ECHO LOG HERE
@@ -88,7 +101,7 @@ PASTE S3 PING/ECHO LOG HERE
 
 - [ ] 32 sequenced ping/echo frames PASS.
 
-## WROOM RTS -> S3 CTS evidence
+### WROOM RTS -> S3 CTS evidence
 
 Measured transmit-drain time:
 
@@ -102,9 +115,9 @@ PASTE PHASE-B LOG HERE
 
 - [ ] Measured drain time >= 350 ms.
 - [ ] 1024-byte payload integrity PASS.
-- [ ] WROOM RTS -> S3 CTS functional backpressure PASS.
+- [ ] WROOM RTS -> S3 CTS asserted/throttled/released/resumed PASS.
 
-## S3 RTS -> WROOM CTS evidence
+### S3 RTS -> WROOM CTS evidence
 
 Measured transmit-drain time:
 
@@ -118,57 +131,65 @@ PASTE PHASE-C LOG HERE
 
 - [ ] Measured drain time >= 350 ms.
 - [ ] 1024-byte payload integrity PASS.
-- [ ] S3 RTS -> WROOM CTS functional backpressure PASS.
+- [ ] S3 RTS -> WROOM CTS asserted/throttled/released/resumed PASS.
 
-## Overall automated result
+### Complete-round result
 
-Observed S3 final line:
+Observed S3 lines:
 
 ```text
-BRINGUP PASS: TX/RX and both RTS/CTS crossings are functional
+ROUND <N> PASS: TX/RX and both RTS/CTS crossings asserted, throttled, released, and resumed
+BRINGUP PASS: round=<N>
+RESET TEST READY: keep both boards powered; reset either MCU and require a later round PASS
 ```
 
-- [ ] Automated smoke test PASS.
+- [ ] Initial complete round PASS.
 
 ## Reset / boot behavior
 
 Keep **both boards powered** for the individual reset tests below. Use the reset/EN mechanism rather than removing power from only one board.
 
+A reset cycle counts as PASS only when the reset MCU boots normally **and a later complete S3 round passes**.
+
 ### WROOM resets while S3 stays powered
 
-| Cycle | Booted normally? | Notes |
-| --- | --- | --- |
-| 1 | | |
-| 2 | | |
-| 3 | | |
-| 4 | | |
-| 5 | | |
+| Cycle | WROOM booted normally? | Later round number | Complete round PASS? | Notes |
+| --- | --- | ---: | --- | --- |
+| 1 | | | | |
+| 2 | | | | |
+| 3 | | | | |
+| 4 | | | | |
+| 5 | | | | |
+
+- [ ] 5/5 WROOM reset cycles produce a later complete round PASS.
 
 ### S3 resets while WROOM stays powered
 
-| Cycle | Booted normally? | Notes |
-| --- | --- | --- |
-| 1 | | |
-| 2 | | |
-| 3 | | |
-| 4 | | |
-| 5 | | |
+| Cycle | S3 booted normally? | Post-reset round number | Complete round PASS? | Notes |
+| --- | --- | ---: | --- | --- |
+| 1 | | | | |
+| 2 | | | | |
+| 3 | | | | |
+| 4 | | | | |
+| 5 | | | | |
+
+- [ ] 5/5 S3 reset cycles produce a complete post-reset round PASS.
 
 ### Common cold-power cycles
 
 Power both boards down together and bring both boards back to normal power together using the same safe/common power method used for initial bring-up.
 
-| Cycle | Both booted normally? | Notes |
-| --- | --- | --- |
-| 1 | | |
-| 2 | | |
-| 3 | | |
-| 4 | | |
-| 5 | | |
+| Cycle | Both booted normally? | Complete round PASS? | Notes |
+| --- | --- | --- | --- |
+| 1 | | | |
+| 2 | | | |
+| 3 | | | |
+| 4 | | | |
+| 5 | | | |
 
+- [ ] 5/5 common cold-power cycles produce a complete round PASS.
 - [ ] No boot-strap/pin-state conflict observed.
 - [ ] No test deliberately drove an unpowered peer through an HCI GPIO.
-- [ ] Full smoke test passes again after reset-cycle testing.
 
 ## Optional logic-analyzer evidence
 
@@ -190,7 +211,13 @@ Reason/evidence summary:
 
 ### V1-104 — Verify basic UART electrical communication
 
-- [ ] PASS
+- [ ] S3 -> WROOM traffic PASS.
+- [ ] WROOM -> S3 traffic PASS.
+- [ ] WROOM RTS -> S3 CTS assertion/release PASS.
+- [ ] S3 RTS -> WROOM CTS assertion/release PASS.
+- [ ] Reset/re-synchronization PASS.
+- [ ] No boot-strap/pin-state conflict observed.
+- [ ] **V1-104 PASS.**
 
 Reason/evidence summary:
 
