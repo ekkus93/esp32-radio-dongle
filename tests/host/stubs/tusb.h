@@ -9,7 +9,12 @@
 #define CFG_TUD_MEM_SECTION
 #define TUD_EPBUF_DEF(_name, _size) uint8_t _name[_size]
 
+#define CFG_TUD_ENDPOINT0_SIZE 64u
+#define TUD_CONFIG_DESC_LEN 9u
+
 #define TUSB_CLASS_WIRELESS_CONTROLLER 0xe0u
+#define TUSB_DESC_DEVICE 0x01u
+#define TUSB_DESC_CONFIGURATION 0x02u
 #define TUSB_DESC_INTERFACE 0x04u
 #define TUSB_DESC_ENDPOINT 0x05u
 #define TUSB_XFER_BULK 0x02u
@@ -24,10 +29,33 @@
 #define CONTROL_STAGE_DATA 1u
 #define CONTROL_STAGE_ACK 2u
 
+#define TUD_CONFIG_DESCRIPTOR(_config_num, _itf_count, _stridx, _total_len, _attribute, _power_ma) \
+    9u, TUSB_DESC_CONFIGURATION, (uint8_t)((_total_len) & 0xffu),                            \
+        (uint8_t)(((_total_len) >> 8) & 0xffu), (uint8_t)(_itf_count),                       \
+        (uint8_t)(_config_num), (uint8_t)(_stridx), (uint8_t)(0x80u | (_attribute)),         \
+        (uint8_t)((_power_ma) / 2u)
+
 typedef enum {
     XFER_RESULT_SUCCESS = 0,
     XFER_RESULT_FAILED = 1,
 } xfer_result_t;
+
+typedef struct __attribute__((packed)) {
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+    uint16_t bcdUSB;
+    uint8_t bDeviceClass;
+    uint8_t bDeviceSubClass;
+    uint8_t bDeviceProtocol;
+    uint8_t bMaxPacketSize0;
+    uint16_t idVendor;
+    uint16_t idProduct;
+    uint16_t bcdDevice;
+    uint8_t iManufacturer;
+    uint8_t iProduct;
+    uint8_t iSerialNumber;
+    uint8_t bNumConfigurations;
+} tusb_desc_device_t;
 
 typedef struct __attribute__((packed)) {
     uint8_t bLength;
