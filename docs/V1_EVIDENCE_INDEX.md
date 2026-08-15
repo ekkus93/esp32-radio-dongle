@@ -84,31 +84,42 @@ Still required:
 Software implementation complete:
 
 - ESP32-S3 native USB target;
-- standard Bluetooth Wireless Controller class identity;
-- command/event/ACL endpoints and control path;
+- standard Bluetooth Wireless Controller E0/01/01 identity;
+- two-interface legacy Bluetooth Controller USB configuration;
+- interface 0 carries command/event/ACL transport;
+- interface 1 alternate setting 0 is endpoint-free and represents zero active voice channels;
 - stable serial generation policy;
-- no fake SCO/ISO endpoints; and
+- no usable/fake SCO/ISO endpoints or nonzero-bandwidth alternate settings; and
 - lifecycle source handling for attach/detach/suspend/resume.
 
-Host-only evidence from GitHub Actions run `31872240757`:
+The normative correction from the original one-interface planning wording is recorded in `docs/V1_USB_COMPLIANCE_CORRECTION.md`.
 
-- the actual production `radio_usb_bth.c` compiles on the host against a minimal fake TinyUSB backend with `-Wall -Wextra -Werror -pedantic`;
-- class registration and descriptor-open rejection paths are exercised;
+Host-only evidence from GitHub Actions run `31873127842`:
+
+- formatting, release-log policy, and component-boundary policy pass;
+- strict H4 host tests pass;
+- the actual production `radio_usb_bth.c` compiles and passes behavior tests against a minimal fake TinyUSB backend;
+- class registration and primary-interface descriptor-open rejection paths are exercised;
+- the empty second Bluetooth interface is accepted only after the primary interface, only as the adjacent interface number, only at alternate setting 0, and only with zero endpoints;
 - HCI command class-control transfers are exercised;
+- legacy single-function device-targeted HCI class requests, including `bRequest=0xE0`, are exercised;
+- device-to-host, non-class, misrouted interface, and oversized HCI control requests are rejected;
 - fragmented ACL OUT reassembly is exercised;
 - incomplete, oversized, and ambiguous zero-length ACL transfers fail closed;
 - event packet validation and completion callbacks are exercised;
 - ACL IN exact-full-speed-packet transfer termination via ZLP is exercised;
 - transfer-error/reset behavior is exercised;
-- the actual production `usb_descriptors.c` compiles and is inspected byte-for-byte by a host test;
-- device and interface identity are verified as Bluetooth Wireless Controller E0/01/01;
-- event IN, ACL OUT, and ACL IN endpoint address/type/size contracts are verified;
+- the actual production `usb_descriptors.c` is inspected byte-for-byte by a host test;
+- configuration total length is verified as 48 bytes with `bNumInterfaces=2`;
+- interface 0 event IN, ACL OUT, and ACL IN endpoint address/type/size contracts are verified;
+- interface 1 alternate setting 0 is verified as E0/01/01 with zero endpoints;
 - development VID/PID `CAFE:4011`, strings, and one-configuration layout are verified; and
 - deterministic factory-MAC serial formatting plus the explicit fallback serial are verified.
 
 Relevant host tests:
 
 - `tests/host/test_radio_usb_bth.c`
+- `tests/host/test_radio_usb_bth_control_compat.c`
 - `tests/host/test_usb_descriptors.c`
 
 Still required:
@@ -138,25 +149,34 @@ The following gate groups fundamentally require hardware and/or real host Blueto
 
 ## Release/security software evidence
 
-### V1-G110 — Security, identity, and release hygiene
+### V1-G110 — Security, identity, and release hygiene: software configuration PASS
 
-Static review evidence already exists in:
+Static review evidence exists in:
 
 - `docs/V1_SECURITY_REVIEW.md`;
 - `docs/V1_RELEASE_CONFIGURATION.md`;
 - `scripts/check-release-logging.sh`;
+- `scripts/check-component-boundaries.sh`;
 - `firmware/esp32_wroom_bt_controller/sdkconfig.release`; and
 - `firmware/esp32s3_usb_bridge/sdkconfig.release`.
 
-Release CI is configured to build both production targets with WARN-only maximum/default logging, verify the generated configuration, hash all binary flash inputs, and upload commit-addressed artifacts.
+GitHub Actions run `31872668340` proved the release pipeline on commit `f55a4f9023c994fe00910b2f8c476b4d41a05a8e`:
 
-Do not mark V1-G110 PASS until the release-profile CI jobs have actually passed for the relevant repository state.
+- both production release profiles built successfully with ESP-IDF v5.5.5;
+- the resolved WARN-only logging/reproducibility choices passed validation;
+- both normal production builds and both UART smoke builds passed;
+- release flash inputs were hashed; and
+- commit-addressed WROOM and S3 release artifacts were uploaded.
+
+Those development artifacts are pipeline evidence only; they are not the final V1 release because hardware qualification has not occurred.
+
+V1-904 remains open: only real sustained traffic can establish whether release/development logging affects timing on physical hardware.
 
 ## Documentation gate
 
 ### V1-G120 — Documentation/user experience
 
-Software documentation exists for build, flashing, wiring, usage, troubleshooting, limitations, board verification, UART bring-up, security review, and release configuration.
+Software documentation exists for build, flashing, wiring, usage, troubleshooting, limitations, board verification, UART bring-up, security review, release configuration, USB transport, and the USB compliance correction.
 
 The gate remains open because the complete instructions must eventually be validated against real boards and clean Windows/Linux hosts.
 
