@@ -8,6 +8,7 @@
 
 #include "driver/uart.h"
 #include "esp_check.h"
+#include "esp_err.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -39,8 +40,11 @@
 #define SMOKE_UART_TX_BUFFER_SIZE 2048
 #define SMOKE_UART_RX_FLOW_THRESHOLD 96
 #define SMOKE_IO_TIMEOUT_MS 2000
-#define SMOKE_PEER_SYNC_ATTEMPTS 40
-#define SMOKE_PEER_SYNC_DELAY_MS 250
+#define SMOKE_SYNC_IO_TIMEOUT_MS 500
+#define SMOKE_PEER_SYNC_ATTEMPTS 30
+#define SMOKE_PEER_SYNC_DELAY_MS 100
+#define SMOKE_UART_RECOVERY_DELAY_MS 50
+#define SMOKE_ROUND_DELAY_MS 2000
 #define SMOKE_PING_COUNT 32
 #define SMOKE_FLOW_PAYLOAD_SIZE 1024
 #define SMOKE_FLOW_STALL_MS 600
@@ -128,14 +132,30 @@ static esp_err_t init_uart(void) {
         "route smoke-test UART pins");
     ESP_RETURN_ON_ERROR(uart_flush_input(SMOKE_UART), TAG, "flush smoke-test UART input");
 
-    ESP_LOGI(TAG, "%s: UART=%d baud=%d TX=%d RX=%d RTS=%d CTS=%d", SMOKE_ROLE_NAME, (int)SMOKE_UART,
-             RADIO_HCI_UART_BAUD, SMOKE_TX_GPIO, SMOKE_RX_GPIO, SMOKE_RTS_GPIO, SMOKE_CTS_GPIO);
+    uart_hw_flowcontrol_t flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
+    ESP_RETURN_ON_ERROR(uart_get_hw_flow_ctrl(SMOKE_UART, &flow_ctrl), TAG,
+                        "read back smoke-test UART flow-control mode");
+    if (flow_ctrl != UART_HW_FLOWCTRL_CTS_RTS) {
+        ESP_LOGE(TAG, "UART hardware flow-control readback mismatch: got=%d expected=%d",
+                 (int)flow_ctrl, (int)UART_HW_FLOWCTRL_CTS_RTS);
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    ESP_LOGI(TAG, "%s: UART=%d baud=%d TX=%d RX=%d RTS=%d CTS=%d flow=CTS_RTS threshold=%u",
+             SMOKE_ROLE_NAME, (int)SMOKE_UART, RADIO_HCI_UART_BAUD, SMOKE_TX_GPIO, SMOKE_RX_GPIO,
+             SMOKE_RTS_GPIO, SMOKE_CTS_GPIO, SMOKE_UART_RX_FLOW_THRESHOLD);
     return ESP_OK;
+}
+
+static esp_err_t recover_uart(void) {
+    ESP_RETURN_ON_ERROR(uart_driver_delete(SMOKE_UART), TAG, "delete smoke-test UART driver");
+    vTaskDelay(pdMS_TO_TICKS(SMOKE_UART_RECOVERY_DELAY_MS));
+    return init_uart();
 }
 
 #if SMOKE_ROLE_INITIATOR
 
-static esp_err_t ping_once(uint32_t sequence) {
+static esp_err_t ping_once(uint32_t sequence, uint32_t timeout_ms) {
     uint8_t request[8] = {'P', 'I', 'N', 'G', 0, 0, 0, 0};
     uint8_t response[sizeof(request)] = {0};
     request[4] = (uint8_t)(sequence & 0xffu);
@@ -143,9 +163,8 @@ static esp_err_t ping_once(uint32_t sequence) {
     request[6] = (uint8_t)((sequence >> 16) & 0xffu);
     request[7] = (uint8_t)((sequence >> 24) & 0xffu);
 
-    ESP_RETURN_ON_ERROR(write_and_drain(request, sizeof(request), SMOKE_IO_TIMEOUT_MS), TAG,
-                        "send ping");
-    ESP_RETURN_ON_ERROR(read_exact(response, sizeof(response), SMOKE_IO_TIMEOUT_MS), TAG,
+    ESP_RETURN_ON_ERROR(write_and_drain(request, sizeof(request), timeout_ms), TAG, "send ping");
+    ESP_RETURN_ON_ERROR(read_exact(response, sizeof(response), timeout_ms), TAG,
                         "receive ping echo");
     if (memcmp(request, response, sizeof(request)) != 0) {
         ESP_LOGE(TAG, "ping echo mismatch at sequence %" PRIu32, sequence);
@@ -156,11 +175,15 @@ static esp_err_t ping_once(uint32_t sequence) {
 
 static esp_err_t synchronize_peer(void) {
     for (unsigned attempt = 1; attempt <= SMOKE_PEER_SYNC_ATTEMPTS; ++attempt) {
-        if (ping_once(0u) == ESP_OK) {
+        const esp_err_t ping_err = ping_once(0u, SMOKE_SYNC_IO_TIMEOUT_MS);
+        if (ping_err == ESP_OK) {
             ESP_LOGI(TAG, "peer synchronized after %u attempt(s)", attempt);
             return ESP_OK;
         }
-        (void)uart_flush_input(SMOKE_UART);
+
+        ESP_LOGW(TAG, "peer sync attempt %u/%u failed: %s; resetting local UART state", attempt,
+                 SMOKE_PEER_SYNC_ATTEMPTS, esp_err_to_name(ping_err));
+        ESP_RETURN_ON_ERROR(recover_uart(), TAG, "recover UART after failed peer sync");
         vTaskDelay(pdMS_TO_TICKS(SMOKE_PEER_SYNC_DELAY_MS));
     }
 
@@ -170,7 +193,8 @@ static esp_err_t synchronize_peer(void) {
 
 static esp_err_t run_ping_test(void) {
     for (uint32_t sequence = 1; sequence <= SMOKE_PING_COUNT; ++sequence) {
-        ESP_RETURN_ON_ERROR(ping_once(sequence), TAG, "bidirectional ping/echo failed");
+        ESP_RETURN_ON_ERROR(ping_once(sequence, SMOKE_IO_TIMEOUT_MS), TAG,
+                            "bidirectional ping/echo failed");
     }
     ESP_LOGI(TAG, "PASS: %u bidirectional ping/echo frames", SMOKE_PING_COUNT);
     return ESP_OK;
@@ -215,7 +239,8 @@ static esp_err_t run_s3_to_wroom_flow_test(void) {
     }
 
     ESP_LOGI(TAG,
-             "PASS: WROOM RTS -> S3 CTS backpressure, %u-byte payload drained in %" PRIu32 " ms",
+             "PASS: WROOM RTS -> S3 CTS backpressure asserted/released; %u-byte payload drained in %"
+             PRIu32 " ms",
              SMOKE_FLOW_PAYLOAD_SIZE, elapsed_ms);
     return ESP_OK;
 }
@@ -257,19 +282,48 @@ static esp_err_t run_wroom_to_s3_flow_test(void) {
     }
 
     ESP_LOGI(TAG,
-             "PASS: S3 RTS -> WROOM CTS backpressure, %u-byte payload drained in %" PRIu32 " ms",
+             "PASS: S3 RTS -> WROOM CTS backpressure asserted/released; %u-byte payload drained in %"
+             PRIu32 " ms",
              SMOKE_FLOW_PAYLOAD_SIZE, elapsed_ms);
     return ESP_OK;
 }
 
-static esp_err_t run_initiator(void) {
+static esp_err_t run_initiator_round(uint32_t round) {
+    ESP_LOGI(TAG, "ROUND %" PRIu32 ": synchronizing peer", round);
     ESP_RETURN_ON_ERROR(synchronize_peer(), TAG, "peer synchronization failed");
     ESP_RETURN_ON_ERROR(run_ping_test(), TAG, "ping/echo test failed");
     ESP_RETURN_ON_ERROR(run_s3_to_wroom_flow_test(), TAG, "S3-to-WROOM flow-control test failed");
     ESP_RETURN_ON_ERROR(run_wroom_to_s3_flow_test(), TAG, "WROOM-to-S3 flow-control test failed");
 
-    ESP_LOGI(TAG, "BRINGUP PASS: TX/RX and both RTS/CTS crossings are functional");
+    ESP_LOGI(TAG,
+             "ROUND %" PRIu32
+             " PASS: TX/RX and both RTS/CTS crossings asserted, throttled, released, and resumed",
+             round);
     return ESP_OK;
+}
+
+static esp_err_t run_initiator(void) {
+    uint32_t round = 1u;
+
+    for (;;) {
+        const esp_err_t round_err = run_initiator_round(round);
+        if (round_err == ESP_OK) {
+            ESP_LOGI(TAG, "BRINGUP PASS: round=%" PRIu32, round);
+            if (round == 1u) {
+                ESP_LOGI(TAG,
+                         "RESET TEST READY: keep both boards powered; reset either MCU and require a "
+                         "later round PASS");
+            }
+            round++;
+            vTaskDelay(pdMS_TO_TICKS(SMOKE_ROUND_DELAY_MS));
+            continue;
+        }
+
+        ESP_LOGW(TAG, "ROUND %" PRIu32 " failed: %s; reinitializing UART and re-synchronizing", round,
+                 esp_err_to_name(round_err));
+        ESP_RETURN_ON_ERROR(recover_uart(), TAG, "recover UART after failed smoke-test round");
+        vTaskDelay(pdMS_TO_TICKS(SMOKE_PEER_SYNC_DELAY_MS));
+    }
 }
 
 #else
@@ -303,7 +357,7 @@ static esp_err_t responder_flow_a(void) {
 
     ESP_RETURN_ON_ERROR(write_and_drain(OK_FLOW_A, sizeof(OK_FLOW_A), SMOKE_IO_TIMEOUT_MS), TAG,
                         "send forward-flow validation result");
-    ESP_LOGI(TAG, "PASS: received intact S3-to-WROOM flow-control payload");
+    ESP_LOGI(TAG, "PASS: received intact S3-to-WROOM flow-control payload after RTS release");
     return ESP_OK;
 }
 
@@ -339,18 +393,33 @@ static esp_err_t run_responder(void) {
             ESP_LOGI(TAG, "READY: still waiting for ESP32-S3 smoke-test initiator");
             continue;
         }
-        ESP_RETURN_ON_ERROR(read_err, TAG, "read smoke-test command");
+        if (read_err != ESP_OK) {
+            ESP_LOGW(TAG, "responder command read failed: %s; resetting UART state",
+                     esp_err_to_name(read_err));
+            ESP_RETURN_ON_ERROR(recover_uart(), TAG, "recover responder UART after command read");
+            continue;
+        }
 
+        esp_err_t phase_err = ESP_OK;
         if (memcmp(command, CMD_PING, sizeof(command)) == 0) {
-            ESP_RETURN_ON_ERROR(responder_ping(), TAG, "respond to ping");
+            phase_err = responder_ping();
         } else if (memcmp(command, CMD_FLOW_A, sizeof(command)) == 0) {
-            ESP_RETURN_ON_ERROR(responder_flow_a(), TAG, "run forward-flow responder phase");
+            phase_err = responder_flow_a();
         } else if (memcmp(command, CMD_FLOW_B, sizeof(command)) == 0) {
-            ESP_RETURN_ON_ERROR(responder_flow_b(), TAG, "run reverse-flow responder phase");
+            phase_err = responder_flow_b();
         } else {
-            ESP_LOGE(TAG, "unknown smoke-test command: %02x %02x %02x %02x", command[0], command[1],
-                     command[2], command[3]);
-            return ESP_ERR_INVALID_RESPONSE;
+            ESP_LOGW(TAG,
+                     "unknown/unaligned smoke-test command: %02x %02x %02x %02x; resetting UART "
+                     "state",
+                     command[0], command[1], command[2], command[3]);
+            ESP_RETURN_ON_ERROR(recover_uart(), TAG, "recover responder UART after unknown command");
+            continue;
+        }
+
+        if (phase_err != ESP_OK) {
+            ESP_LOGW(TAG, "responder phase failed: %s; resetting UART state for peer re-sync",
+                     esp_err_to_name(phase_err));
+            ESP_RETURN_ON_ERROR(recover_uart(), TAG, "recover responder UART after phase failure");
         }
     }
 }
