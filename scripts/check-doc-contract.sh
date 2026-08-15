@@ -13,6 +13,7 @@ required_docs=(
   docs/TROUBLESHOOTING.md
   docs/LIMITATIONS.md
   docs/V1_BOARD_VERIFICATION.md
+  docs/V1_ELECTRICAL_PREFLIGHT.md
   docs/V1_EVIDENCE_INDEX.md
   docs/V1_RELEASE_CONFIGURATION.md
   docs/V1_SECURITY_REVIEW.md
@@ -33,6 +34,7 @@ spec=docs/ESP32_RADIO_DONGLE_V1_SPEC.md
 todo=docs/ESP32_RADIO_DONGLE_V1_TODO.md
 limits=docs/LIMITATIONS.md
 board=docs/V1_BOARD_VERIFICATION.md
+electrical=docs/V1_ELECTRICAL_PREFLIGHT.md
 audit=docs/V1_DOCUMENTATION_EVIDENCE_AUDIT.md
 
 # Current locked contract must be represented in the canonical SPEC/TODO.
@@ -48,6 +50,8 @@ grep -Fq '[x] **V1-1104 — Release configuration review**' "${todo}"
 grep -Fq '**Gate V1-G110: PASS for software configuration.**' "${todo}"
 grep -Fq 'AYWHP ESP32-S3-DevKitC-1-N16R8' "${board}"
 grep -Fq 'Aideepen 30-pin ESP-WROOM-32' "${board}"
+grep -Fq '**Static/datasheet electrical preflight: PASS.**' "${electrical}"
+grep -Fq '**V1-103 parent task: OPEN**' "${electrical}"
 grep -Fq 'Software documentation/evidence audit: **PASS**.' "${audit}"
 grep -Fq 'The exact initial V1 development boards **are identified and approved for the reference pin contract**' "${limits}"
 
