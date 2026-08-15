@@ -16,12 +16,15 @@ extern usbd_class_driver_t const *usbd_app_driver_get_cb(uint8_t *driver_count);
 #define ACL_OUT_EP 0x02u
 #define ACL_IN_EP 0x82u
 #define FS_PACKET_SIZE 64u
+#define PRIMARY_DESCRIPTOR_LEN                                                                   \
+    (sizeof(tusb_desc_interface_t) + (3u * sizeof(tusb_desc_endpoint_t)))
 
 typedef struct __attribute__((packed)) {
     tusb_desc_interface_t interface;
     tusb_desc_endpoint_t event_in;
     tusb_desc_endpoint_t acl_out;
     tusb_desc_endpoint_t acl_in;
+    tusb_desc_interface_t sco_idle;
 } descriptor_bundle_t;
 
 static const descriptor_bundle_t DESCRIPTORS = {
@@ -63,6 +66,18 @@ static const descriptor_bundle_t DESCRIPTORS = {
             .bmAttributes = {.xfer = TUSB_XFER_BULK},
             .wMaxPacketSize = FS_PACKET_SIZE,
             .bInterval = 0u,
+        },
+    .sco_idle =
+        {
+            .bLength = sizeof(tusb_desc_interface_t),
+            .bDescriptorType = TUSB_DESC_INTERFACE,
+            .bInterfaceNumber = 5u,
+            .bAlternateSetting = 0u,
+            .bNumEndpoints = 0u,
+            .bInterfaceClass = TUSB_CLASS_WIRELESS_CONTROLLER,
+            .bInterfaceSubClass = 0x01u,
+            .bInterfaceProtocol = 0x01u,
+            .iInterface = 0u,
         },
 };
 
@@ -149,14 +164,49 @@ void radio_usb_bth_hci_command_received_cb(const uint8_t *command, size_t comman
     s_command_count++;
 }
 
-static const usbd_class_driver_t *open_driver(void) {
+static const usbd_class_driver_t *get_driver(void) {
     uint8_t driver_count = 0u;
     const usbd_class_driver_t *driver = usbd_app_driver_get_cb(&driver_count);
     assert(driver != NULL);
     assert(driver_count == 1u);
-    driver->init();
-    assert(driver->open(0u, &DESCRIPTORS.interface, sizeof(DESCRIPTORS)) == sizeof(DESCRIPTORS));
     return driver;
+}
+
+static const usbd_class_driver_t *open_driver(void) {
+    const usbd_class_driver_t *driver = get_driver();
+    driver->init();
+    assert(driver->open(0u, &DESCRIPTORS.interface, sizeof(DESCRIPTORS)) ==
+           PRIMARY_DESCRIPTOR_LEN);
+    assert(driver->open(0u, &DESCRIPTORS.sco_idle, sizeof(DESCRIPTORS.sco_idle)) ==
+           sizeof(tusb_desc_interface_t));
+    return driver;
+}
+
+static void test_empty_sco_interface_rules(void) {
+    const usbd_class_driver_t *driver = get_driver();
+
+    driver->init();
+    assert(driver->open(0u, &DESCRIPTORS.sco_idle, sizeof(DESCRIPTORS.sco_idle)) == 0u);
+
+    driver->init();
+    assert(driver->open(0u, &DESCRIPTORS.interface, sizeof(DESCRIPTORS)) ==
+           PRIMARY_DESCRIPTOR_LEN);
+
+    tusb_desc_interface_t bad = DESCRIPTORS.sco_idle;
+    bad.bInterfaceNumber++;
+    assert(driver->open(0u, &bad, sizeof(bad)) == 0u);
+
+    bad = DESCRIPTORS.sco_idle;
+    bad.bAlternateSetting = 1u;
+    assert(driver->open(0u, &bad, sizeof(bad)) == 0u);
+
+    bad = DESCRIPTORS.sco_idle;
+    bad.bNumEndpoints = 2u;
+    assert(driver->open(0u, &bad, sizeof(bad)) == 0u);
+
+    assert(driver->open(0u, &DESCRIPTORS.sco_idle, sizeof(DESCRIPTORS.sco_idle)) ==
+           sizeof(tusb_desc_interface_t));
+    assert(driver->open(0u, &DESCRIPTORS.sco_idle, sizeof(DESCRIPTORS.sco_idle)) == 0u);
 }
 
 static tusb_control_request_t make_request(uint8_t recipient, uint8_t direction, uint8_t b_request,
@@ -184,6 +234,7 @@ static void execute_command(const usbd_class_driver_t *driver, tusb_control_requ
 }
 
 int main(void) {
+    test_empty_sco_interface_rules();
     const usbd_class_driver_t *driver = open_driver();
 
     tusb_control_request_t request =
