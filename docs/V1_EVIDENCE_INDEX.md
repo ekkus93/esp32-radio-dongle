@@ -160,15 +160,24 @@ Static review evidence exists in:
 - `firmware/esp32_wroom_bt_controller/sdkconfig.release`; and
 - `firmware/esp32s3_usb_bridge/sdkconfig.release`.
 
-GitHub Actions run `31872668340` proved the release pipeline on commit `f55a4f9023c994fe00910b2f8c476b4d41a05a8e`:
+GitHub Actions run `31873127842`, commit `57864e9e83b5760c70fbff2e3b5f1ab1cfbe174e`, is the current fully green software checkpoint:
 
-- both production release profiles built successfully with ESP-IDF v5.5.5;
-- the resolved WARN-only logging/reproducibility choices passed validation;
-- both normal production builds and both UART smoke builds passed;
-- release flash inputs were hashed; and
-- commit-addressed WROOM and S3 release artifacts were uploaded.
+- host formatting and policy gates passed;
+- all H4/USB class/control-compatibility/descriptor host tests passed;
+- normal ESP32-WROOM-32 controller build passed;
+- normal ESP32-S3 USB bridge build passed;
+- both dedicated UART smoke-image builds passed;
+- both WARN-only production release-profile builds passed; and
+- both release flash-input artifacts were uploaded.
 
-Those development artifacts are pipeline evidence only; they are not the final V1 release because hardware qualification has not occurred.
+Development release artifacts from that run:
+
+- `v1-release-esp32-controller-57864e9e83b5760c70fbff2e3b5f1ab1cfbe174e`
+  - artifact archive digest: `sha256:a4d9e6559a3f42886395e3430e4b9574b6e2d81e38165c6ba01dfffa253e9b88`
+- `v1-release-esp32s3-bridge-57864e9e83b5760c70fbff2e3b5f1ab1cfbe174e`
+  - artifact archive digest: `sha256:ef88512964d3bac8de6e2c60d37912cf1b062cd80118cc4564c0aae41aa40cae`
+
+Those artifacts are pipeline/software evidence only; they are not the final V1 release because hardware qualification has not occurred. The final release must be generated from the exact hardware-qualified release commit.
 
 V1-904 remains open: only real sustained traffic can establish whether release/development logging affects timing on physical hardware.
 
